@@ -1,0 +1,18 @@
+# ── 절대 커밋 금지 (peach-bot/.gitignore 와 이중 방어) ──────────
+.env
+**/.env
+gen-lang-client-*.json
+**/gen-lang-client-*.json
+*-service-account.json
+credentials.json
+
+# 고객 개인정보가 담긴 시트 백업
+backups/
+**/backups/
+
+# ── 일반 ───────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+logs/
+*.log

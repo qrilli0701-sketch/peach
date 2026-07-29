@@ -1,0 +1,18 @@
+# ── 절대 커밋 금지 ─────────────────────────────
+# 텔레그램 봇 토큰, Gemini API 키, 스프레드시트 ID
+.env
+
+# 구글 서비스 계정 개인키
+gen-lang-client-*.json
+*-service-account.json
+credentials.json
+
+# 고객 개인정보(이름·전화번호·주소)가 담긴 시트 백업
+backups/
+
+# ── 일반 ───────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+logs/
+*.log

@@ -1,0 +1,6 @@
+python-telegram-bot==21.6
+google-genai
+gspread==6.0.2
+google-auth==2.27.0
+python-dotenv==1.0.1
+Pillow
