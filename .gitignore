@@ -10,6 +10,10 @@ credentials.json
 backups/
 **/backups/
 
+# 붙여넣기에서 추출한 주문서 이미지 (고객 이름·전화·주소)
+inbox/
+**/inbox/
+
 # ── 일반 ───────────────────────────────────────
 .venv/
 __pycache__/
