@@ -53,8 +53,12 @@ def walk_in_order(node, out):
 
     스택(LIFO)으로 훑으면 순서가 뒤집힌다. 이미지 순서가 뒤집히면 어느 장이 어느
     주문인지 사람이 대조할 때 헷갈리므로 재귀로 순서를 지킨다.
+
+    tool_result 안의 이미지는 건너뛴다. 도구가 돌려준 스크린샷 따위지 주문서가 아니다.
     """
     if isinstance(node, dict):
+        if node.get("type") == "tool_result":
+            return
         if node.get("type") == "image":
             src = node.get("source") or {}
             if src.get("type") == "base64" and src.get("data"):
@@ -79,14 +83,14 @@ def collect(transcript, take_all=False):
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            # 사용자가 보낸 메시지만 본다. 도구 결과에 섞여 들어온 이미지는 주문서가 아니다.
-            if rec.get("type") != "user":
-                continue
-            content = (rec.get("message") or {}).get("content")
-            if not isinstance(content, list):
+            # 사용자가 보낸 것만 본다. 두 가지 형태가 있다:
+            #   type="user"       — 턴 시작 때 보낸 메시지
+            #   type="attachment" — 내가 작업하는 도중에 끼어든 메시지 (2026-08-04 발견)
+            # attachment 를 빠뜨려서 12명짜리 주문서 표를 못 꺼낸 적이 있다. 둘 다 본다.
+            if rec.get("type") not in ("user", "attachment"):
                 continue
             found = []
-            walk_in_order(content, found)
+            walk_in_order(rec.get("message") or rec, found)
             if found:
                 batches.append(found)
     if not batches:
