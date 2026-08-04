@@ -286,6 +286,63 @@ def cmd_backup(sheet, args):
     print(f"💾 백업 완료: {path} ({n}건)")
 
 
+# ── 빈 칸 음영 ──────────────────────────────────────────────────
+#
+# 주소나 수량이 비어 있으면 그대로는 배송이 안 나간다. 시트를 눈으로 훑을 때
+# 바로 보이도록 노란색으로 칠한다. 값이 채워지면 다시 실행해서 걷어내면 된다.
+
+YELLOW = {"red": 1.0, "green": 0.95, "blue": 0.6}
+WHITE = {"red": 1.0, "green": 1.0, "blue": 1.0}
+
+# 비고는 비어 있는 게 정상이라 대상에서 뺀다. 나머지는 비면 배송에 지장이 있다.
+CHECK_COLS = ["받는사람", "받는분전화번호", "수량", "주소", "보내는사람", "보내는분전화번호"]
+
+
+def scan_blanks(sheet):
+    """(A1표기, 행번호, 컬럼명, 받는사람, 비었는지) 목록. 날짜 구분용 빈 행은 제외."""
+    rows = with_retry(lambda: sheet.get_all_values())
+    out = []
+    for rownum, row in enumerate(rows[1:], start=2):
+        row = (row + [""] * len(HEADERS))[:len(HEADERS)]
+        if is_blank(row):          # 날짜 구분용 빈 행 — 통째로 비어 있는 게 정상
+            continue
+        for col in CHECK_COLS:
+            i = HEADERS.index(col)
+            a1 = f"{chr(ord('A') + i)}{rownum}"
+            out.append((a1, rownum, col, row[1], not row[i].strip()))
+    return out
+
+
+def cmd_highlight(sheet, args):
+    cells = scan_blanks(sheet)
+    blanks = [c for c in cells if c[4]]
+
+    if not blanks and not args.clear:
+        print("✅ 비어 있는 칸이 없습니다. 칠할 게 없어요.")
+        return
+
+    print(f"🟡 빈 칸 {len(blanks)}개:")
+    for a1, _, col, name, _ in blanks:
+        print(f"  • {a1}  {col} — {name}")
+
+    formats = [{"range": a1, "format": {"backgroundColor": YELLOW}}
+               for a1, _, _, _, _ in blanks]
+    if args.clear:
+        # 값이 채워진 칸의 음영을 걷어낸다. 다시 실행하면 최신 상태로 맞춰진다.
+        filled = [c for c in cells if not c[4]]
+        formats += [{"range": a1, "format": {"backgroundColor": WHITE}}
+                    for a1, _, _, _, _ in filled]
+        print(f"🧽 채워진 칸 {len(filled)}개의 음영을 걷어냅니다.")
+
+    if not args.commit:
+        print("\n⚠️ 미리보기입니다. 시트는 그대로입니다.")
+        print("   실제로 칠하려면 같은 명령에 --commit 을 붙이세요.")
+        return
+
+    with_retry(lambda: sheet.batch_format(formats))
+    print(f"\n🟡 {len(blanks)}칸 음영 완료" + (f" (+{len(formats) - len(blanks)}칸 해제)" if args.clear else ""))
+
+
 def cmd_restore(sheet, args):
     """백업 CSV로 시트를 되돌린다. 되돌리기 직전 현재 상태도 백업한다."""
     import csv
@@ -346,6 +403,12 @@ def main():
 
     b = sub.add_parser("backup", help="현재 시트를 CSV로 백업")
     b.set_defaults(func=cmd_backup)
+
+    hl = sub.add_parser("highlight", help="빈 칸을 노란색으로 음영 (기본 미리보기)")
+    hl.add_argument("--clear", action="store_true",
+                    help="값이 채워진 칸의 음영은 걷어냄 (다시 돌리면 최신 상태로 맞춰짐)")
+    hl.add_argument("--commit", action="store_true", help="실제로 서식 적용")
+    hl.set_defaults(func=cmd_highlight)
 
     rs = sub.add_parser("restore", help="백업 CSV로 복원 (기본 미리보기)")
     rs.add_argument("csv", help="백업 CSV 경로")
