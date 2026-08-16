@@ -150,6 +150,86 @@ def cmd_add(sheet, args):
         print(f"  • {r[1]} | {r[3]} | {r[4]}")
 
 
+def cmd_add_checked(sheet, args):
+    """검증 3종(전화번호/시도/도로명주소)을 거쳐 통과분만 기록한다.
+
+    RECORD 판정 → 정규화된 전화번호로 시트에 기록.
+    HOLD 판정   → 시트에 기록하지 않고 backups/hold_queue_*.json 에 실패 사유와 함께
+                  저장 + 콘솔에 사람 확인 큐로 출력. 주소 API가 찾아준 값은 참고용
+                  '제안'으로만 보여주고 절대 자동 적용하지 않는다.
+    """
+    from validate import validate_order
+
+    if args.json == "-":
+        raw = sys.stdin.buffer.read().decode("utf-8")
+    elif os.path.isfile(args.json):
+        with open(args.json, encoding="utf-8") as f:
+            raw = f.read()
+    else:
+        raw = args.json
+
+    orders = json.loads(raw)
+    if isinstance(orders, dict):
+        orders = [orders]
+
+    bad = [i for i, o in enumerate(orders, 1) if not (o.get("받는사람") or "").strip()]
+    if bad:
+        print(f"❌ 검증 중단: {bad}번 행에 '받는사람'이 없습니다.")
+        sys.exit(1)
+
+    to_record, to_hold = [], []
+    for o in orders:
+        result = validate_order({
+            "phone": o.get("받는분전화번호", ""),
+            "address": o.get("주소", ""),
+        })
+        if result["verdict"] == "RECORD":
+            o = dict(o)
+            if result["normalized_phone"]:
+                o["받는분전화번호"] = result["normalized_phone"]
+            to_record.append((o, result))
+        else:
+            to_hold.append((o, result))
+
+    if to_record:
+        now = datetime.now()
+        rows = [[now.strftime("%Y-%m-%d %H:%M:%S")] + [(o.get(k) or "") for k in FIELDS]
+                for o, _ in to_record]
+        prev = last_record_date(sheet)
+        separator = prev is not None and prev != now.strftime("%Y-%m-%d") and not args.no_separator
+        if separator:
+            rows.insert(0, [""] * len(HEADERS))
+        with_retry(lambda: sheet.append_rows(rows, value_input_option="RAW"))
+        if separator:
+            print(f"📅 날짜 변경({prev} → {now:%Y-%m-%d}) — 구분용 빈 행 1줄 삽입")
+            rows = rows[1:]
+        print(f"✅ RECORD {len(rows)}건 기록 완료 (검증 3종 통과, 전화번호 정규화됨)")
+        for r in rows:
+            print(f"  • {r[1]} | {r[2]} | {r[4]}")
+    else:
+        print("✅ RECORD 대상 없음")
+
+    if to_hold:
+        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
+        os.makedirs(d, exist_ok=True)
+        path = os.path.join(d, f"hold_queue_{datetime.now():%Y%m%d_%H%M%S}.json")
+        queue = [{**o, "_검증사유": r["reasons"], "_주소제안(참고용)": r["suggestion"]}
+                 for o, r in to_hold]
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(queue, f, ensure_ascii=False, indent=2)
+
+        print(f"\n🟡 HOLD {len(to_hold)}건 — 시트에 기록하지 않고 사람 확인 큐로 뺌")
+        print(f"   저장: {path}")
+        for o, result in to_hold:
+            print(f"  • {o.get('받는사람')} | {o.get('받는분전화번호')} | {o.get('주소')}")
+            for reason in result["reasons"]:
+                print(f"      - {reason}")
+            if result["suggestion"]:
+                print(f"      💡 juso 제안(자동적용 안 함, 참고만): {result['suggestion']}")
+    else:
+        print("🟡 HOLD 없음 — 전부 통과")
+
+
 def cmd_count(sheet, args):
     data = data_rows(sheet)
     today = datetime.now().strftime("%Y-%m-%d")
@@ -374,6 +454,13 @@ def main():
                    help="날짜가 바뀌어도 구분용 빈 행을 넣지 않음")
     a.set_defaults(func=cmd_add)
 
+    ac = sub.add_parser("add-checked",
+                         help="검증 3종(전화번호/시도/도로명주소) 통과분만 기록, 나머지는 HOLD 큐로")
+    ac.add_argument("json", help="주문 JSON 배열, JSON 파일 경로, 또는 '-' (stdin)")
+    ac.add_argument("--no-separator", action="store_true",
+                     help="날짜가 바뀌어도 구분용 빈 행을 넣지 않음")
+    ac.set_defaults(func=cmd_add_checked)
+
     c = sub.add_parser("count", help="건수 조회")
     c.set_defaults(func=cmd_count)
 
@@ -417,7 +504,7 @@ def main():
 
     args = p.parse_args()
     sheet = get_sheet()
-    if args.cmd == "add":
+    if args.cmd in ("add", "add-checked"):
         init_sheet(sheet)
     args.func(sheet, args)
 
