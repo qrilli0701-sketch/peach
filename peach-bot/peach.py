@@ -153,7 +153,8 @@ def cmd_add(sheet, args):
 def cmd_add_checked(sheet, args):
     """검증 3종(전화번호/시도/도로명주소)을 거쳐 통과분만 기록한다.
 
-    RECORD 판정 → 정규화된 전화번호로 시트에 기록.
+    RECORD 판정 → 정규화된 전화번호로 시트에 기록. 주소 API가 차단/불통이라 검증을
+                  건너뛴 건은 비고에 '주소 미검증(API 차단)' 꼬리표를 붙여서 기록한다.
     HOLD 판정   → 시트에 기록하지 않고 backups/hold_queue_*.json 에 실패 사유와 함께
                   저장 + 콘솔에 사람 확인 큐로 출력. 주소 API가 찾아준 값은 참고용
                   '제안'으로만 보여주고 절대 자동 적용하지 않는다.
@@ -187,6 +188,11 @@ def cmd_add_checked(sheet, args):
             o = dict(o)
             if result["normalized_phone"]:
                 o["받는분전화번호"] = result["normalized_phone"]
+            # 주소 미검증 등 꼬리표는 비고에 덧붙인다(기존 비고는 보존).
+            if result["notes"]:
+                tag = " / ".join(result["notes"])
+                existing = (o.get("비고") or "").strip()
+                o["비고"] = f"{existing} [{tag}]".strip() if existing else f"[{tag}]"
             to_record.append((o, result))
         else:
             to_hold.append((o, result))
@@ -203,9 +209,13 @@ def cmd_add_checked(sheet, args):
         if separator:
             print(f"📅 날짜 변경({prev} → {now:%Y-%m-%d}) — 구분용 빈 행 1줄 삽입")
             rows = rows[1:]
-        print(f"✅ RECORD {len(rows)}건 기록 완료 (검증 3종 통과, 전화번호 정규화됨)")
+        degraded = sum(1 for _, r in to_record if r["notes"])
+        summary = f"✅ RECORD {len(rows)}건 기록 완료 (전화번호 정규화됨)"
+        if degraded:
+            summary += f" — 이 중 {degraded}건은 주소 미검증(API 차단, 비고에 표시)"
+        print(summary)
         for r in rows:
-            print(f"  • {r[1]} | {r[2]} | {r[4]}")
+            print(f"  • {r[1]} | {r[2]} | {r[4]}" + (f" | {r[7]}" if r[7] else ""))
     else:
         print("✅ RECORD 대상 없음")
 

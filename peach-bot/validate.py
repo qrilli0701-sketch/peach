@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 JUSO_CONFM_KEY = os.getenv("JUSO_CONFM_KEY") or "TESTJUSOGOKR"
 JUSO_API_URL = "https://www.juso.go.kr/addrlink/addrLinkApi.do"
 
-PASS, FAIL, NEEDS_CHECK = "PASS", "FAIL", "NEEDS_CHECK"
+# PASS: 통과 / FAIL: 오독 확정(HOLD) / NEEDS_CHECK: 사람 확인 필요(HOLD)
+# SKIPPED: 검증 불가 — API 차단·불통 등으로 검사 자체를 못 함(오독은 아님).
+#          이 경우 주소검사는 건너뛰되 '미검증' 꼬리표를 남기고 기록은 허용한다.
+PASS, FAIL, NEEDS_CHECK, SKIPPED = "PASS", "FAIL", "NEEDS_CHECK", "SKIPPED"
 
 SIDO_STANDARD = [
     "서울특별시", "부산광역시", "대구광역시", "인천광역시", "광주광역시",
@@ -169,7 +172,8 @@ def check_road_address(address, parsed_sido=None):
 
     total, results, error = _juso_query(address.strip())
     if error:
-        return CheckResult(NEEDS_CHECK, error)
+        # 검증 자체를 못 한 것(차단/불통) — 오독 확정과 구분해 SKIPPED 로 둔다.
+        return CheckResult(SKIPPED, f"주소 API 검증 불가(건너뜀): {error}")
 
     tried_simplified = False
     if total == 0:
@@ -178,7 +182,7 @@ def check_road_address(address, parsed_sido=None):
             tried_simplified = True
             total, results, error = _juso_query(simplified)
             if error:
-                return CheckResult(NEEDS_CHECK, error)
+                return CheckResult(SKIPPED, f"주소 API 검증 불가(건너뜀): {error}")
 
     if total == 0:
         return CheckResult(
@@ -210,17 +214,29 @@ def validate_order(order):
         "normalized_phone": str|None,
         "suggestion": str|None,   # 사람 확인용, 자동 적용 안 함
         "reasons": [str, ...],    # HOLD 사유 목록
+        "notes": [str, ...],      # 기록은 하되 남길 꼬리표(예: 주소 미검증)
     }
+
+    판정 규칙:
+      - 주소검사가 SKIPPED(API 차단/불통)면 그 항목은 막지 않고, 대신 '주소 미검증'
+        꼬리표를 남긴 채 나머지(전화번호·시도)만으로 RECORD 여부를 정한다.
+      - FAIL·NEEDS_CHECK 는 그대로 HOLD 사유가 된다(주소 0건=오독, 시도 모호/불일치 등).
     """
     phone_r = check_phone(order.get("phone", ""))
     sido_r = check_sido(order.get("address", ""))
     road_r = check_road_address(order.get("address", ""), parsed_sido=sido_r.normalized)
 
     checks = {"phone": phone_r, "sido": sido_r, "road_address": road_r}
-    reasons = [f"{k}: {v.reason}" for k, v in checks.items() if v.status != PASS and v.reason]
 
-    all_pass = all(v.status == PASS for v in checks.values())
-    verdict = "RECORD" if all_pass else "HOLD"
+    # SKIPPED(검증 불가)는 기록을 막지 않는다. 그 외 non-PASS 는 HOLD 사유.
+    reasons = [f"{k}: {v.reason}" for k, v in checks.items()
+               if v.status not in (PASS, SKIPPED) and v.reason]
+
+    notes = []
+    if road_r.status == SKIPPED:
+        notes.append("주소 미검증(API 차단)")
+
+    verdict = "RECORD" if not reasons else "HOLD"
 
     return {
         "verdict": verdict,
@@ -228,4 +244,5 @@ def validate_order(order):
         "normalized_phone": phone_r.normalized,
         "suggestion": road_r.suggestion,
         "reasons": reasons,
+        "notes": notes,
     }
