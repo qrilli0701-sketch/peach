@@ -3,12 +3,13 @@
 판독된 주문(name, phone, address)을 구글시트에 기록하기 직전 3종 검사한다.
 자동 교정은 절대 하지 않는다 — API가 찾아준 주소는 사람이 확인할 '제안'으로만 붙인다.
 
-검사 3종:
+검사:
   1. 전화번호 — 010 은 반드시 11자리. 정규화(010-1234-5678)해서 반환.
-  2. 시/도    — 주소 첫 토큰을 17개 표준 시도명과 대조. '광주' 단독은 모호 판정.
-  3. 도로명주소 — juso.go.kr 검색 API 로 실존 여부 확인.
+  2. 도로명주소 — juso.go.kr 검색 API 로 실존 여부 확인(차단/불통이면 건너뜀).
 
-판정: 3종 모두 PASS 면 RECORD, 하나라도 아니면 HOLD.
+판정: 막는 검사가 하나도 없으면 RECORD, 하나라도 실패면 HOLD.
+(시/도 화이트리스트 검사는 도 생략 표기를 자꾸 헛걸러 실전에서 뺐다. check_sido
+ 함수는 남겨두되 판정에는 쓰지 않는다.)
 """
 import os
 import re
@@ -219,14 +220,16 @@ def validate_order(order):
 
     판정 규칙:
       - 주소검사가 SKIPPED(API 차단/불통)면 그 항목은 막지 않고, 대신 '주소 미검증'
-        꼬리표를 남긴 채 나머지(전화번호·시도)만으로 RECORD 여부를 정한다.
-      - FAIL·NEEDS_CHECK 는 그대로 HOLD 사유가 된다(주소 0건=오독, 시도 모호/불일치 등).
+        꼬리표를 남긴 채 전화번호만으로 RECORD 여부를 정한다.
+      - FAIL·NEEDS_CHECK 는 그대로 HOLD 사유가 된다(전화번호 오류, 주소 0건=오독 등).
     """
+    # 시/도 화이트리스트 검사는 뺐다. 도(道)를 생략하고 시/군/구부터 쓰는
+    # 흔한 표기를 자꾸 헛걸러서 실전에서 유의미하지 않았다. 전화번호(형식)와
+    # 도로명주소(실존, API 열렸을 때만)만 남긴다.
     phone_r = check_phone(order.get("phone", ""))
-    sido_r = check_sido(order.get("address", ""))
-    road_r = check_road_address(order.get("address", ""), parsed_sido=sido_r.normalized)
+    road_r = check_road_address(order.get("address", ""))
 
-    checks = {"phone": phone_r, "sido": sido_r, "road_address": road_r}
+    checks = {"phone": phone_r, "road_address": road_r}
 
     # SKIPPED(검증 불가)는 기록을 막지 않는다. 그 외 non-PASS 는 HOLD 사유.
     reasons = [f"{k}: {v.reason}" for k, v in checks.items()
