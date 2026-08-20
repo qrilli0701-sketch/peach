@@ -215,29 +215,22 @@ def validate_order(order):
         "normalized_phone": str|None,
         "suggestion": str|None,   # 사람 확인용, 자동 적용 안 함
         "reasons": [str, ...],    # HOLD 사유 목록
-        "notes": [str, ...],      # 기록은 하되 남길 꼬리표(예: 주소 미검증)
+        "notes": [str, ...],      # 기록은 하되 남길 꼬리표(현재는 안 씀, 호환용 빈 리스트)
     }
 
     판정 규칙:
-      - 주소검사가 SKIPPED(API 차단/불통)면 그 항목은 막지 않고, 대신 '주소 미검증'
-        꼬리표를 남긴 채 전화번호만으로 RECORD 여부를 정한다.
-      - FAIL·NEEDS_CHECK 는 그대로 HOLD 사유가 된다(전화번호 오류, 주소 0건=오독 등).
+      - 전화번호가 FAIL 이면 HOLD, 통과하면 RECORD. 주소·시도는 사람이 본다.
     """
-    # 시/도 화이트리스트 검사는 뺐다. 도(道)를 생략하고 시/군/구부터 쓰는
-    # 흔한 표기를 자꾸 헛걸러서 실전에서 유의미하지 않았다. 전화번호(형식)와
-    # 도로명주소(실존, API 열렸을 때만)만 남긴다.
+    # 검증은 전화번호 하나만 자동으로 건다. 사람이 긴 목록을 훑을 때 놓치기 쉬운
+    # '자릿수 빠진 번호'를 기계가 받쳐주는 용도. 주소·시도는 사람 눈으로 본다.
+    # (check_road_address / check_sido 함수는 남겨두되 판정에는 쓰지 않는다 —
+    #  juso API 가 열리는 환경에서 되살리고 싶으면 여기서 다시 호출하면 된다.)
     phone_r = check_phone(order.get("phone", ""))
-    road_r = check_road_address(order.get("address", ""))
 
-    checks = {"phone": phone_r, "road_address": road_r}
+    checks = {"phone": phone_r}
 
-    # SKIPPED(검증 불가)는 기록을 막지 않는다. 그 외 non-PASS 는 HOLD 사유.
     reasons = [f"{k}: {v.reason}" for k, v in checks.items()
                if v.status not in (PASS, SKIPPED) and v.reason]
-
-    notes = []
-    if road_r.status == SKIPPED:
-        notes.append("주소 미검증(API 차단)")
 
     verdict = "RECORD" if not reasons else "HOLD"
 
@@ -245,7 +238,7 @@ def validate_order(order):
         "verdict": verdict,
         "checks": checks,
         "normalized_phone": phone_r.normalized,
-        "suggestion": road_r.suggestion,
+        "suggestion": None,
         "reasons": reasons,
-        "notes": notes,
+        "notes": [],
     }
