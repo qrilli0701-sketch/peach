@@ -51,7 +51,7 @@ MEDIA = re.compile(r"^\s*(사진|사진 \d+장|동영상|이모티콘|음성메�
 # '총 8박스' 같은 합계. 개별 수량 합과 맞는지 검산할 대상.
 TOTAL = re.compile(r"(총|합계|모두)\s*(\d+)\s*(박스|개|상자)")
 
-PHONE = re.compile(r"0\d{1,2}[-.\s]?\d{3,4}[-.\s]?\d{4}")
+PHONE = re.compile(r"0\d{1,2}[-._\s]?\d{3,4}[-._\s]?\d{4}")
 MASKED = re.compile(r"0\d{1,2}\s*[.·*x…]{2,}\s*\d{3,4}")
 
 
