@@ -53,6 +53,10 @@ WEIGHT = {
 }
 TEAM_THRESHOLD = 3           # 이 이상이면 판독팀 권장
 
+# 이 신호가 뜨면 **파싱 결과 자체를 믿을 수 없다.** 위험한 정도가 아니라 틀린 값이 나온다.
+# 화면(UI)은 이 경우 기록을 막고 대화창으로 안내한다.
+BLOCKING = {"카톡원문", "이미지"}
+
 
 def inbox_dir(base=None):
     d = Path(base) if base else HERE / "inbox" / datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -111,8 +115,38 @@ def assess(paths):
 
     texts = [p for p in paths if p.suffix.lower() == ".txt"]
     for p in texts:
-        body = p.read_text(encoding="utf-8")
+        scan_text(p.read_text(encoding="utf-8"), signals, detail)
 
+    return _verdict(signals, detail)
+
+
+def _verdict(signals, detail):
+    score = sum(WEIGHT.get(k, 0) for k in signals)
+    blocking = sorted(BLOCKING & set(signals))
+    return {
+        "신호": signals,
+        "설명": detail,
+        "점수": score,
+        "권장": "판독팀" if score >= TEAM_THRESHOLD else "단독 판독 가능",
+        "차단": bool(blocking),
+        "차단사유": blocking,
+    }
+
+
+def assess_text(text):
+    """파일로 떨구지 않고 텍스트만 평가한다.
+
+    화면에서 붙여넣은 직후 바로 위험을 알려주려면 필요하다. 접수(파일 저장)까지
+    가기 전에 "이건 화면에서 다룰 게 아니다"를 말해줄 수 있어야 한다.
+    """
+    signals, detail = {}, []
+    scan_text(text or "", signals, detail)
+    return _verdict(signals, detail)
+
+
+def scan_text(body, signals, detail):
+    """텍스트 하나를 훑어 위험 신호를 signals/detail 에 채운다."""
+    if True:
         # 가려진 번호와 합계 표현은 **원문에서 직접** 센다.
         # 파싱 결과에 기대면 파싱이 실패하는 입력에서 신호를 통째로 놓친다 —
         # 정작 그때가 가장 위험한데.
@@ -133,7 +167,7 @@ def assess(paths):
             signals["카톡원문"] = kakao_lines
             detail.append(f"카톡 대화 원문으로 보임 ({kakao_lines}줄) — "
                           f"kakao.py 로 먼저 묶은 뒤 판독팀에 넘길 것")
-            continue
+            return          # 파싱 기반 신호는 허수라 더 보지 않는다
 
         r = parse_mod.parse(body)
         orders = r["orders"]
@@ -156,14 +190,6 @@ def assess(paths):
         if orders and not any((o.get("보내는사람") or "").strip() for o in orders):
             signals["발신자불명"] = 1
             detail.append("보내는사람이 어디에도 없다 — 카톡 발신자 이름으로 채울 수 있는지 확인")
-
-    score = sum(WEIGHT.get(k, 0) for k in signals)
-    return {
-        "신호": signals,
-        "설명": detail,
-        "점수": score,
-        "권장": "판독팀" if score >= TEAM_THRESHOLD else "단독 판독 가능",
-    }
 
 
 def main():

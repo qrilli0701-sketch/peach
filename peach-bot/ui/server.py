@@ -35,6 +35,9 @@ sys.path.insert(0, ROOT)
 
 import parse as parse_mod             # noqa: E402
 import export as export_mod           # noqa: E402
+import intake as intake_mod           # noqa: E402
+import kakao as kakao_mod             # noqa: E402
+import audit as audit_mod             # noqa: E402
 
 HEADERS = export_mod.HEADERS
 FIELDS = HEADERS[1:]
@@ -70,6 +73,10 @@ except Exception as e:                                    # pragma: no cover
         if not 9 <= len(d) <= 11:
             return _R("FAIL", f"전화번호 자리수가 이상함: {d}")
         return _R(PASS, normalized=d)
+
+
+def logger_warn(msg):
+    print(f"⚠️ {msg}", file=sys.stderr)
 
 
 # ── 시트 백엔드 ─────────────────────────────────────────────
@@ -343,7 +350,25 @@ class Handler(BaseHTTPRequestHandler):
         }
 
     def parse_text(self, body):
-        res = parse_mod.parse(body.get("text", ""))
+        text = body.get("text", "")
+
+        # 파싱보다 먼저 평가한다. 파싱 결과를 못 믿는 입력이 있는데,
+        # 그걸 모른 채 표를 보여주면 "1건 읽었습니다"가 성공처럼 보인다.
+        assess = intake_mod.assess_text(text)
+
+        if assess["차단"]:
+            # 카톡 원문이면 묶어서 보여준다. 막기만 하면 사용자가 뭘 해야 할지 모른다.
+            groups = []
+            if "카톡원문" in assess["신호"]:
+                try:
+                    groups = kakao_mod.group(kakao_mod.parse_lines(text))
+                except Exception as e:
+                    logger_warn(f"카톡 묶기 실패: {e}")
+            return {"orders": [], "format": "화면에서 다룰 수 없는 입력",
+                    "접수": assess, "카톡묶음": groups, "중복": []}
+
+        res = parse_mod.parse(text)
+        res["접수"] = assess
         for o in res["orders"]:
             phone = o.get("받는분전화번호", "")
             r = check_phone(phone) if phone.strip() else None
@@ -361,11 +386,38 @@ class Handler(BaseHTTPRequestHandler):
         orders = body.get("orders") or []
         if not orders:
             return {"error": "기록할 주문이 없습니다."}
+
+        # 화면이 막았더라도 서버에서 한 번 더 본다. 화면은 우회될 수 있다.
+        text = body.get("원문", "")
+        assess = intake_mod.assess_text(text) if text else None
+        if assess and assess["차단"]:
+            return {"error": f"이 입력({', '.join(assess['차단사유'])})은 화면에서 기록할 수 "
+                             f"없습니다. 대화창으로 주시면 판독팀이 읽습니다."}
+
         clean = [{k: (o.get(k) or "").strip() for k in FIELDS} for o in orders]
         bad = [i for i, o in enumerate(clean, 1) if not o["받는사람"]]
         if bad:
             return {"error": f"{bad}번 행에 '받는사람'이 없습니다. 기록을 중단했습니다."}
+
         res = self.backend.append(clean, no_separator=bool(body.get("no_separator")))
+
+        # 판독기록 — 화면에서 넣은 건 전부 '단독'이다(판독팀을 안 거쳤으므로).
+        # 기록이 실패해도 주문 기록은 이미 끝났으니 되돌리지 않는다. 경고만 남긴다.
+        try:
+            audit_mod.write({
+                "종류": "텍스트",
+                "점수": assess["점수"] if assess else 0,
+                "신호": sorted(assess["신호"]) if assess else [],
+                "경로": "단독",
+                "판독": len(clean),
+                "불일치": 0,
+                "기록": len(res["rows"]),
+                "보류": 0,
+                "출처": "화면",
+            })
+        except Exception as e:
+            logger_warn(f"판독기록 실패(주문 기록은 완료됨): {e}")
+
         return {"ok": True, "added": len(res["rows"]), "separator": res["separator"],
                 "prev_date": res["prev_date"], "date": res["date"]}
 
