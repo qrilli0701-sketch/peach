@@ -5,3 +5,4 @@ google-auth==2.27.0
 python-dotenv==1.0.1
 Pillow
 requests
+openpyxl

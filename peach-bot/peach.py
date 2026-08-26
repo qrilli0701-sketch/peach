@@ -104,6 +104,28 @@ def last_record_date(sheet):
     return data[-1][0][:10] if data else None
 
 
+def missing_name_rows(orders):
+    """받는사람이 빈 행의 1-기반 번호 목록. 인코딩 깨짐/키 오타를 잡는 마지막 방어선."""
+    return [i for i, o in enumerate(orders, 1) if not (o.get("받는사람") or "").strip()]
+
+
+def append_orders(sheet, orders, no_separator=False):
+    """주문 배열을 시트에 덧붙인다. 날짜가 바뀌었으면 구분용 빈 행을 한 줄 넣는다.
+
+    CLI 와 UI 서버가 같은 경로로 기록하도록 여기 한 곳에 모아둔다.
+    반환: {"rows": 기록한 데이터 행, "separator": bool, "prev_date": str|None, "date": str}
+    """
+    now = datetime.now()
+    rows = [[now.strftime("%Y-%m-%d %H:%M:%S")] + [(o.get(k) or "") for k in FIELDS]
+            for o in orders]
+    prev = last_record_date(sheet)
+    today = now.strftime("%Y-%m-%d")
+    separator = prev is not None and prev != today and not no_separator
+    payload = ([[""] * len(HEADERS)] + rows) if separator else rows
+    with_retry(lambda: sheet.append_rows(payload, value_input_option="RAW"))
+    return {"rows": rows, "separator": separator, "prev_date": prev, "date": today}
+
+
 # ── 명령 ────────────────────────────────────────────────────────
 
 def cmd_add(sheet, args):
@@ -123,30 +145,19 @@ def cmd_add(sheet, args):
 
     # 인코딩 깨짐이나 키 오타는 "빈 행 기록 성공"으로 조용히 끝난다. 그게 가장 나쁘므로
     # 받는사람 없는 행이 하나라도 있으면 아무것도 기록하지 않고 중단한다.
-    bad = [i for i, o in enumerate(orders, 1) if not (o.get("받는사람") or "").strip()]
+    bad = missing_name_rows(orders)
     if bad:
         print(f"❌ 기록 중단: {bad}번 행에 '받는사람'이 없습니다.")
         print(f"   읽어들인 키: {sorted(orders[bad[0] - 1].keys())}")
         print("   (키가 깨져 보이면 입력 파일 인코딩이 UTF-8인지 확인하세요)")
         sys.exit(1)
 
-    now = datetime.now()
-    rows = [[now.strftime("%Y-%m-%d %H:%M:%S")] + [(o.get(k) or "") for k in FIELDS]
-            for o in orders]
-
     # 날짜가 바뀐 뒤 첫 기록이면 구분용 빈 행을 한 줄 넣는다. 같은 날 추가 입력은 이어 붙인다.
-    prev = last_record_date(sheet)
-    separator = prev is not None and prev != now.strftime("%Y-%m-%d") and not args.no_separator
-    if separator:
-        rows.insert(0, [""] * len(HEADERS))
-
-    with_retry(lambda: sheet.append_rows(rows, value_input_option="RAW"))
-
-    if separator:
-        print(f"📅 날짜 변경({prev} → {now:%Y-%m-%d}) — 구분용 빈 행 1줄 삽입")
-        rows = rows[1:]
-    print(f"✅ {len(rows)}건 기록 완료")
-    for r in rows:
+    res = append_orders(sheet, orders, args.no_separator)
+    if res["separator"]:
+        print(f"📅 날짜 변경({res['prev_date']} → {res['date']}) — 구분용 빈 행 1줄 삽입")
+    print(f"✅ {len(res['rows'])}건 기록 완료")
+    for r in res["rows"]:
         print(f"  • {r[1]} | {r[3]} | {r[4]}")
 
 
@@ -174,7 +185,7 @@ def cmd_add_checked(sheet, args):
     if isinstance(orders, dict):
         orders = [orders]
 
-    bad = [i for i, o in enumerate(orders, 1) if not (o.get("받는사람") or "").strip()]
+    bad = missing_name_rows(orders)
     if bad:
         print(f"❌ 검증 중단: {bad}번 행에 '받는사람'이 없습니다.")
         sys.exit(1)
@@ -195,17 +206,9 @@ def cmd_add_checked(sheet, args):
             to_hold.append((o, result))
 
     if to_record:
-        now = datetime.now()
-        rows = [[now.strftime("%Y-%m-%d %H:%M:%S")] + [(o.get(k) or "") for k in FIELDS]
-                for o, _ in to_record]
-        prev = last_record_date(sheet)
-        separator = prev is not None and prev != now.strftime("%Y-%m-%d") and not args.no_separator
-        if separator:
-            rows.insert(0, [""] * len(HEADERS))
-        with_retry(lambda: sheet.append_rows(rows, value_input_option="RAW"))
-        if separator:
-            print(f"📅 날짜 변경({prev} → {now:%Y-%m-%d}) — 구분용 빈 행 1줄 삽입")
-            rows = rows[1:]
+        res = append_orders(sheet, [o for o, _ in to_record], args.no_separator)
+        if res["separator"]:
+            print(f"📅 날짜 변경({res['prev_date']} → {res['date']}) — 구분용 빈 행 1줄 삽입")
         print(f"✅ RECORD {len(to_record)}건 기록 완료 (전화번호 정규화됨)")
         for o, _ in to_record:
             print(f"  • {o.get('받는사람')} | {o.get('받는분전화번호')} | {o.get('주소')}")

@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>복숭아 주문</title>
+<style>
+:root{
+  --bg:#f6f6f7; --card:#fff; --line:#e2e2e6; --line2:#eeeef1;
+  --ink:#1b1b1f; --dim:#6d6d78; --faint:#9a9aa5;
+  --peach:#e2703a; --peach-soft:#fdefe7;
+  /* 시트의 노란음영과 동일한 값 — 화면과 시트가 같은 색이어야 헷갈리지 않는다 */
+  --yellow:#fff299; --yellow-line:#e8d566;
+  --red:#c93a3a; --red-soft:#fdecec;
+  --blue:#2f6fb5; --blue-soft:#eaf2fb;
+  --ok:#2f7d4f;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#16161a;--card:#1e1e23;--line:#33333c;--line2:#2a2a31;
+        --ink:#ececed;--dim:#a0a0ab;--faint:#75757f;
+        --peach:#f08a56;--peach-soft:#3a2318;
+        --yellow:#6b5f1f;--yellow-line:#9a8a2e;
+        --red:#e26a6a;--red-soft:#3a1e1e;--blue:#7fb0e8;--blue-soft:#1c2836;--ok:#68b98a;}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+     font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic",
+     "Apple SD Gothic Neo",system-ui,sans-serif;}
+header{background:var(--card);border-bottom:1px solid var(--line);
+       padding:0 20px;position:sticky;top:0;z-index:20}
+.bar{display:flex;align-items:center;gap:16px;max-width:1500px;margin:0 auto;height:52px}
+.logo{font-weight:700;font-size:15px;letter-spacing:-.2px}
+.logo span{color:var(--peach)}
+.mode{font-size:11px;padding:3px 8px;border-radius:99px;font-weight:600}
+.mode.demo{background:var(--yellow);color:#5a4a00;border:1px solid var(--yellow-line)}
+.mode.live{background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue)}
+nav{display:flex;gap:2px;margin-left:auto}
+nav button{border:0;background:none;font:inherit;font-weight:600;color:var(--dim);
+  padding:8px 16px;border-radius:8px;cursor:pointer}
+nav button:hover{background:var(--line2);color:var(--ink)}
+nav button.on{background:var(--peach-soft);color:var(--peach)}
+main{max-width:1500px;margin:0 auto;padding:20px}
+section{display:none} section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+      padding:18px;margin-bottom:16px}
+h2{margin:0 0 4px;font-size:16px;letter-spacing:-.2px}
+.sub{margin:0 0 14px;color:var(--dim);font-size:12.5px}
+textarea{width:100%;min-height:170px;padding:12px;border:1px solid var(--line);
+  border-radius:9px;background:var(--bg);color:var(--ink);resize:vertical;
+  font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+textarea:focus{outline:2px solid var(--peach);outline-offset:-1px;border-color:transparent}
+button.act{border:1px solid var(--line);background:var(--card);color:var(--ink);
+  font:inherit;font-weight:600;padding:8px 15px;border-radius:8px;cursor:pointer}
+button.act:hover:not(:disabled){border-color:var(--faint)}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+button.primary{background:var(--peach);border-color:var(--peach);color:#fff}
+button.primary:hover:not(:disabled){filter:brightness(1.07)}
+button.tiny{font-size:11.5px;padding:3px 8px;border-radius:6px;font-weight:600;
+  border:1px solid var(--line);background:var(--card);color:var(--dim);cursor:pointer;
+  white-space:nowrap}
+button.tiny:hover{color:var(--ink);border-color:var(--faint)}
+.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.grow{flex:1}
+table{width:100%;border-collapse:collapse;font-size:13px}
+/* sticky 기준은 페이지가 아니라 .scroll 컨테이너다. top:52px 를 주면
+   헤더가 52px 아래로 밀려 첫 행을 덮어버린다. */
+th{text-align:left;font-size:11.5px;font-weight:700;color:var(--dim);
+   padding:7px 8px;border-bottom:1.5px solid var(--line);white-space:nowrap;
+   position:sticky;top:0;background:var(--card);z-index:5}
+td{padding:5px 8px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tr.sep td{padding:0;height:9px;background:repeating-linear-gradient(
+  45deg,transparent,transparent 5px,var(--line2) 5px,var(--line2) 10px)}
+.scroll{overflow:auto;max-height:70vh;margin:0 -18px -18px;padding:0 18px 18px}
+td input{width:100%;border:1px solid transparent;border-radius:5px;padding:4px 6px;
+  font:inherit;background:transparent;color:inherit}
+td input:hover{border-color:var(--line)}
+td input:focus{outline:none;border-color:var(--peach);background:var(--card)}
+td.blank input,td.blank{background:var(--yellow)}
+td.badphone input{background:var(--red-soft);color:var(--red);font-weight:600}
+.num{color:var(--faint);font-size:11px;font-variant-numeric:tabular-nums;
+     text-align:right;width:38px;user-select:none}
+th:last-child,td:last-child{white-space:nowrap;width:1%}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;
+      border-radius:99px;white-space:nowrap}
+.chip.red{background:var(--red-soft);color:var(--red)}
+.chip.yellow{background:var(--yellow);color:#5a4a00}
+.chip.blue{background:var(--blue-soft);color:var(--blue)}
+.chip.ok{color:var(--ok)}
+.dup{border-left:3px solid var(--blue)}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1;min-width:112px;background:var(--card);border:1px solid var(--line);
+      border-radius:11px;padding:12px 14px}
+.stat .k{font-size:11.5px;color:var(--dim);font-weight:600}
+.stat .v{font-size:23px;font-weight:700;letter-spacing:-.6px;
+         font-variant-numeric:tabular-nums;margin-top:1px}
+.stat .v small{font-size:12px;font-weight:600;color:var(--dim);margin-left:2px}
+.stat.warn{border-color:var(--yellow-line);background:var(--yellow)}
+.stat.warn .k,.stat.warn .v{color:#5a4a00}
+.note{padding:10px 13px;border-radius:9px;font-size:12.5px;margin-top:10px}
+.note.warn{background:var(--yellow);color:#5a4a00;border:1px solid var(--yellow-line)}
+.note.err{background:var(--red-soft);color:var(--red);border:1px solid var(--red)}
+.note.info{background:var(--blue-soft);color:var(--blue);border:1px solid var(--blue)}
+.note b{font-weight:700}
+.note ul{margin:6px 0 0;padding-left:18px}
+select,input.f{border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+  font:inherit;background:var(--card);color:var(--ink)}
+label.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;
+  color:var(--dim);font-weight:600;cursor:pointer;user-select:none}
+.empty{text-align:center;padding:44px 20px;color:var(--faint);font-size:13px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--dim);
+        margin-top:12px;padding-top:11px;border-top:1px solid var(--line2)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:3px;
+    vertical-align:-1px;margin-right:4px;border:1px solid var(--line)}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);
+  background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:9px;
+  font-size:13px;font-weight:600;opacity:0;transition:.25s;z-index:60;pointer-events:none;
+  max-width:80vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header><div class="bar">
+  <div class="logo">🍑 복숭아 <span>주문</span></div>
+  <span id="mode" class="mode"></span>
+  <nav>
+    <button data-tab="intake" class="on">받기</button>
+    <button data-tab="review">검토</button>
+    <button data-tab="export">출고</button>
+  </nav>
+</div></header>
+
+<main>
+
+<!-- ── ① 받기 ─────────────────────────────────────────── -->
+<section id="intake" class="on">
+  <div class="card">
+    <h2>주문 붙여넣기</h2>
+    <p class="sub">대화창에서 만든 JSON 배열, <code>받는분: 홍길동</code> 같은 라벨 형식,
+      슬래시로 나뉜 한 줄 형식 — 셋 다 읽습니다.
+      <b>이미지는 여기 말고 대화창에</b> 붙여넣으세요.</p>
+    <textarea id="paste" placeholder="여기에 주문을 붙여넣고 [읽기]를 누르세요.
+
+예)
+받는분: 홍길동
+연락처: 010-2345-6789
+수량: 2박스
+주소: 서울특별시 강남구 테헤란로 152"></textarea>
+    <div class="row" style="margin-top:11px">
+      <button class="act primary" id="doParse">읽기</button>
+      <button class="act" id="clearPaste">지우기</button>
+      <span id="parseInfo" class="sub" style="margin:0"></span>
+    </div>
+  </div>
+
+  <div class="card" id="draftCard" style="display:none">
+    <div class="row" style="margin-bottom:12px">
+      <div class="grow">
+        <h2 style="margin:0">확인하고 기록</h2>
+        <p class="sub" style="margin:0">칸을 눌러 바로 고칠 수 있습니다.
+          고친 뒤 아래 <b>시트에 기록</b>을 눌러야 저장됩니다.</p>
+      </div>
+      <button class="act" id="addRow">+ 행 추가</button>
+      <button class="act primary" id="doAdd">시트에 기록</button>
+    </div>
+    <div id="draftNotes"></div>
+    <div class="scroll"><table id="draftTable"></table></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--yellow)"></i>비었거나 확인 필요</span>
+      <span><i class="sw" style="background:var(--red-soft)"></i>전화번호 자릿수 오류</span>
+      <span><i class="sw" style="background:var(--blue-soft)"></i>시트에 이미 있는 주문</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── ② 검토 ─────────────────────────────────────────── -->
+<section id="review">
+  <div class="stats" id="reviewStats"></div>
+  <div class="card" style="margin-top:16px">
+    <div class="row" style="margin-bottom:12px">
+      <div class="grow">
+        <h2 style="margin:0">시트 검토</h2>
+        <p class="sub" style="margin:0">칸을 눌러 고치면 구글시트에 바로 반영됩니다.
+          (고치기 전 자동 백업)</p>
+      </div>
+      <select id="dateFilter"><option value="">전체 날짜</option></select>
+      <label class="chk"><input type="checkbox" id="onlyIssues"> 문제 있는 행만</label>
+      <button class="act" id="reload">새로고침</button>
+    </div>
+    <div class="scroll"><table id="reviewTable"></table></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--yellow)"></i>빈 칸 — 이대로면 배송 안 나감</span>
+      <span><i class="sw" style="background:var(--red-soft)"></i>전화번호 자릿수 오류</span>
+      <span><i class="sw" style="background:var(--blue)"></i>중복 의심 (같은 번호끼리 한 묶음)</span>
+    </div>
+  </div>
+</section>
+
+<!-- ── ③ 출고 ─────────────────────────────────────────── -->
+<section id="export">
+  <div class="card">
+    <h2>택배업체에 보낼 파일 만들기</h2>
+    <p class="sub">시트 열을 그대로 내보냅니다. 전화번호는 텍스트 서식이라
+      엑셀에서 앞자리 0이 사라지지 않습니다.</p>
+    <div class="row">
+      <label class="chk">기간</label>
+      <select id="expStart"></select>
+      <span class="sub" style="margin:0">~</span>
+      <select id="expEnd"></select>
+      <button class="act tiny" id="expToday">오늘</button>
+      <button class="act tiny" id="expAll">전체</button>
+      <span class="grow"></span>
+      <select id="expFormat">
+        <option value="xlsx">엑셀 (.xlsx)</option>
+        <option value="csv">CSV (.csv)</option>
+      </select>
+      <button class="act primary" id="doExport">내보내기</button>
+    </div>
+    <div id="expNotes"></div>
+  </div>
+  <div class="stats" id="expStats"></div>
+  <div class="card" style="margin-top:16px">
+    <h2>내보낼 내용 미리보기</h2>
+    <p class="sub">이 표가 그대로 파일이 됩니다.</p>
+    <div class="scroll"><table id="expTable"></table></div>
+  </div>
+</section>
+
+</main>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const FIELDS = ["받는사람","받는분전화번호","수량","주소",
+                "보내는사람","보내는분전화번호","비고"];
+// 열 최소 폭. input 은 폭이 100% 라 브라우저가 내용 길이로 열을 키워주지 못한다.
+// 명시하지 않으면 이름이 "홍길ᄃ", 수량이 "2박스"→"2" 로 잘려 보인다.
+const COLW = {"입력시각":"152px","받는사람":"96px","받는분전화번호":"140px","수량":"68px",
+              "주소":"320px","보내는사람":"96px","보내는분전화번호":"140px","비고":"150px"};
+function sizeTh(th, name){
+  if(COLW[name]) th.style.minWidth = COLW[name];
+  if(name==="주소") th.style.width = "38%";
+}
+let STATE = null;      // /api/state 응답
+let DRAFT = [];        // 받기 화면의 편집 중인 주문들
+let DUPS = [];         // 파싱 결과의 중복 경고
+
+const $ = s => document.querySelector(s);
+const el = (t,c,x) => { const n=document.createElement(t);
+  if(c) n.className=c; if(x!=null) n.textContent=x; return n; };
+const won = n => n.toLocaleString("ko-KR")+"원";
+
+let toastTimer;
+function toast(msg){
+  const t=$("#toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("on"),2600);
+}
+
+async function api(path, opts){
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(()=>({error:`서버 응답을 읽지 못했습니다 (${r.status})`}));
+  if(!r.ok || data.error) throw new Error(data.error || `오류 ${r.status}`);
+  return data;
+}
+
+/* ── 탭 ─────────────────────────────────────────────── */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.onclick = ()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+    document.querySelectorAll("main section").forEach(s=>
+      s.classList.toggle("on", s.id===b.dataset.tab));
+    if(b.dataset.tab==="review") renderReview();
+    if(b.dataset.tab==="export") renderExport();
+  };
+});
+
+/* ── 상태 불러오기 ──────────────────────────────────── */
+async function load(){
+  STATE = await api("/api/state");
+  const m=$("#mode");
+  m.className = "mode "+STATE.mode;
+  m.textContent = STATE.mode==="demo" ? "데모 — 가짜 데이터" : "실제 시트";
+  fillDates();
+  renderReview(); renderExport();
+}
+
+function fillDates(){
+  const opts = STATE.dates;
+  const df=$("#dateFilter"), cur=df.value;
+  df.innerHTML='<option value="">전체 날짜</option>';
+  opts.slice().reverse().forEach(d=>df.append(new Option(d,d)));
+  df.value = opts.includes(cur)?cur:"";
+  [["#expStart",opts[0]],["#expEnd",opts[opts.length-1]]].forEach(([sel,def])=>{
+    const s=$(sel), keep=s.value;
+    s.innerHTML="";
+    opts.forEach(d=>s.append(new Option(d,d)));
+    s.value = opts.includes(keep)?keep:def;
+  });
+}
+
+/* ── ① 받기 ─────────────────────────────────────────── */
+$("#clearPaste").onclick = ()=>{
+  $("#paste").value=""; DRAFT=[]; DUPS=[];
+  $("#draftCard").style.display="none"; $("#parseInfo").textContent="";
+};
+$("#addRow").onclick = ()=>{
+  DRAFT.push(Object.fromEntries(FIELDS.map(f=>[f,""])));
+  renderDraft();
+};
+
+$("#doParse").onclick = async ()=>{
+  const text=$("#paste").value.trim();
+  if(!text) return toast("붙여넣은 내용이 없습니다.");
+  $("#doParse").disabled=true;
+  try{
+    const r = await api("/api/parse",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify({text})});
+    DRAFT = r.orders; DUPS = r["중복"]||[];
+    $("#parseInfo").textContent =
+      r.orders.length ? `${r.format}으로 ${r.orders.length}건 읽었습니다.`
+                      : "읽어내지 못했습니다. 형식을 확인해 주세요.";
+    $("#draftCard").style.display = r.orders.length ? "" : "none";
+    renderDraft();
+  }catch(e){ toast(e.message); }
+  finally{ $("#doParse").disabled=false; }
+};
+
+function phoneBad(v){
+  const d=(v||"").replace(/\D/g,"");
+  if(!d) return false;
+  if(d.startsWith("010")) return d.length!==11;
+  return d.length<9 || d.length>11;
+}
+
+function renderDraft(){
+  const t=$("#draftTable"); t.innerHTML="";
+  const head=t.insertRow();
+  head.append(el("th","num","#"));
+  FIELDS.forEach(f=>{ const th=el("th",null,f); sizeTh(th,f); head.append(th); });
+  head.append(el("th",null,""));
+
+  DRAFT.forEach((o,i)=>{
+    const dup = DUPS.find(d=>d.index===i);
+    const tr=t.insertRow();
+    if(dup) tr.className="dup";
+    tr.append(el("td","num",String(i+1)));
+    FIELDS.forEach(f=>{
+      const td=tr.insertCell();
+      const inp=document.createElement("input");
+      inp.value=o[f]||"";
+      inp.title=inp.value;
+      inp.oninput=e=>{ o[f]=e.target.value; inp.title=e.target.value;
+                       paintDraftCell(td,f,o); refreshDraftNotes(); };
+      td.append(inp);
+      paintDraftCell(td,f,o);
+    });
+    const last=tr.insertCell();
+    const del=el("button","tiny","삭제");
+    del.onclick=()=>{ DRAFT.splice(i,1);
+      DUPS=DUPS.filter(d=>d.index!==i).map(d=>d.index>i?{...d,index:d.index-1}:d);
+      renderDraft(); };
+    last.append(del);
+  });
+  refreshDraftNotes();
+}
+
+function paintDraftCell(td,f,o){
+  const required = f!=="비고" && f!=="보내는사람" && f!=="보내는분전화번호";
+  td.className = "";
+  if(f==="받는분전화번호" && phoneBad(o[f])) td.className="badphone";
+  else if(required && !(o[f]||"").trim()) td.className="blank";
+}
+
+function refreshDraftNotes(){
+  const box=$("#draftNotes"); box.innerHTML="";
+  const noName = DRAFT.filter(o=>!(o["받는사람"]||"").trim()).length;
+  const badPhones = DRAFT.filter(o=>phoneBad(o["받는분전화번호"])).length;
+  const gaps = DRAFT.filter(o=>
+    !(o["주소"]||"").trim() || !(o["수량"]||"").trim() ||
+    !(o["받는분전화번호"]||"").trim()).length;
+  const flagged = DRAFT.flatMap(o=>o["_확인필요"]||[]);
+
+  if(noName){
+    const n=el("div","note err");
+    n.innerHTML=`<b>받는사람이 없는 행이 ${noName}건</b> 있습니다. 채우기 전에는 기록되지 않습니다.`;
+    box.append(n);
+  }
+  if(badPhones){
+    const n=el("div","note err");
+    n.innerHTML=`<b>전화번호 자릿수 오류 ${badPhones}건</b> — 010 번호는 11자리여야 합니다.`;
+    box.append(n);
+  }
+  if(gaps||flagged.length){
+    const n=el("div","note warn");
+    n.innerHTML=`<b>확인이 필요한 항목</b>`;
+    const ul=el("ul");
+    if(gaps) ul.append(el("li",null,`전화·수량·주소 중 빈 칸이 있는 행 ${gaps}건`));
+    [...new Set(flagged)].forEach(f=>ul.append(el("li",null,f)));
+    n.append(ul); box.append(n);
+  }
+  DUPS.forEach(d=>{
+    const o=DRAFT[d.index]; if(!o) return;
+    const n=el("div","note info");
+    n.innerHTML=`<b>${d.index+1}번 (${o["받는사람"]||"?"}) — 시트에 이미 ${d.total}건 있습니다.</b>`;
+    const ul=el("ul");
+    d.hits.forEach(h=>ul.append(el("li",null,
+      `${h.date} · ${h.name} · ${h.phone} · ${h.qty} · ${h.addr}`)));
+    n.append(ul); box.append(n);
+  });
+
+  $("#doAdd").disabled = DRAFT.length===0 || noName>0;
+}
+
+$("#doAdd").onclick = async ()=>{
+  if(!DRAFT.length) return;
+  const bad = DRAFT.filter(o=>phoneBad(o["받는분전화번호"])).length;
+  const gaps = DRAFT.filter(o=>!(o["주소"]||"").trim()||!(o["수량"]||"").trim()).length;
+  let msg = `${DRAFT.length}건을 시트에 기록합니다.`;
+  if(bad)  msg += `\n\n⚠ 전화번호 자릿수 오류 ${bad}건이 그대로 들어갑니다.`;
+  if(gaps) msg += `\n⚠ 주소·수량이 빈 행 ${gaps}건이 그대로 들어갑니다.`;
+  if(bad||gaps) msg += `\n\n그래도 기록할까요? (나중에 검토 화면에서 고칠 수 있습니다)`;
+  if(!confirm(msg)) return;
+
+  $("#doAdd").disabled=true;
+  try{
+    const r = await api("/api/add",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({orders:DRAFT.map(o=>
+        Object.fromEntries(FIELDS.map(f=>[f,o[f]||""])))})});
+    toast(`${r.added}건 기록했습니다.` + (r.separator?" (날짜가 바뀌어 구분선 삽입)":""));
+    $("#clearPaste").click();
+    await load();
+  }catch(e){ alert("기록하지 못했습니다.\n\n"+e.message); }
+  finally{ $("#doAdd").disabled=false; }
+};
+
+/* ── ② 검토 ─────────────────────────────────────────── */
+function statCard(k,v,unit,warn){
+  const d=el("div","stat"+(warn?" warn":""));
+  d.append(el("div","k",k));
+  const val=el("div","v",typeof v==="number"?v.toLocaleString("ko-KR"):v);
+  if(unit) val.append(el("small",null,unit));
+  d.append(val); return d;
+}
+
+function renderReview(){
+  if(!STATE) return;
+  const s=STATE.stats, i=STATE.issues, box=$("#reviewStats");
+  box.innerHTML="";
+  box.append(
+    statCard("전체", s["전체"]["건수"], "건"),
+    statCard("오늘", s["오늘"]["건수"], "건"),
+    statCard("전체 박스", s["전체"]["박스"], "박스"),
+    statCard("전체 금액", won(s["전체"]["금액"]), ""),
+    statCard("빈 칸", i["빈칸"], "칸", i["빈칸"]>0),
+    statCard("전화 오류", i["전화오류"], "건", i["전화오류"]>0),
+    statCard("중복 의심", i["중복의심"], "묶음", i["중복의심"]>0));
+
+  const date=$("#dateFilter").value, only=$("#onlyIssues").checked;
+  const t=$("#reviewTable"); t.innerHTML="";
+  const head=t.insertRow();
+  head.append(el("th","num","행"));
+  STATE.headers.forEach(h=>{ const th=el("th",null,h); sizeTh(th,h); head.append(th); });
+  head.append(el("th",null,"표시"));
+
+  let shown=0;
+  STATE.rows.forEach(r=>{
+    if(r.separator){ if(date||only) return;
+      const tr=t.insertRow(); tr.className="sep";
+      tr.insertCell().colSpan=STATE.headers.length+2; return; }
+    if(date && (r.cells[0]||"").slice(0,10)!==date) return;
+    const issue = r.blanks.length || r.phone_error || r.dup;
+    if(only && !issue) return;
+    shown++;
+
+    const tr=t.insertRow();
+    if(r.dup) tr.className="dup";
+    tr.append(el("td","num",String(r.row)));
+    STATE.headers.forEach(h=>{
+      const td=tr.insertCell();
+      if(h==="입력시각"){
+        td.append(el("span","chip",r.cells[0]));
+        td.style.color="var(--faint)"; td.style.fontSize="11.5px";
+        td.style.whiteSpace="nowrap"; return;
+      }
+      const inp=document.createElement("input");
+      inp.value=r.cells[STATE.headers.indexOf(h)];
+      inp.dataset.orig=inp.value;
+      inp.title=inp.value;              // 긴 주소는 칸에서 잘리므로 마우스로 확인
+      inp.onkeydown=e=>{ if(e.key==="Enter") inp.blur();
+                         if(e.key==="Escape"){ inp.value=inp.dataset.orig; inp.blur(); } };
+      inp.onblur=()=>saveCell(r.row,h,inp);
+      td.append(inp);
+      if(h==="받는분전화번호" && r.phone_error) td.className="badphone";
+      else if(r.blanks.includes(h)) td.className="blank";
+    });
+    const last=tr.insertCell();
+    if(r.phone_error) last.append(el("span","chip red",r.phone_error.split("(")[0].trim()));
+    if(r.dup) last.append(el("span","chip blue","중복 의심 #"+r.dup));
+    if(!r.phone_error && !r.dup && !r.blanks.length) last.append(el("span","chip ok","✓"));
+  });
+
+  if(!shown){
+    const tr=t.insertRow(); const td=tr.insertCell();
+    td.colSpan=STATE.headers.length+2;
+    td.append(el("div","empty", only?"문제 있는 행이 없습니다.":"표시할 주문이 없습니다."));
+  }
+}
+
+async function saveCell(rownum, col, inp){
+  const v=inp.value.trim();
+  if(v===inp.dataset.orig) return;
+  try{
+    await api("/api/update",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({row:rownum,col,value:v})});
+    inp.dataset.orig=v;
+    toast(`${rownum}행 ${col} 저장했습니다.`);
+    await load();
+  }catch(e){
+    inp.value=inp.dataset.orig;
+    alert("저장하지 못했습니다.\n\n"+e.message);
+  }
+}
+$("#dateFilter").onchange = renderReview;
+$("#onlyIssues").onchange = renderReview;
+$("#reload").onclick = async ()=>{ await load(); toast("새로고침했습니다."); };
+
+/* ── ③ 출고 ─────────────────────────────────────────── */
+$("#expToday").onclick = ()=>{
+  const d=STATE.dates.includes(STATE.today)?STATE.today:STATE.dates[STATE.dates.length-1];
+  $("#expStart").value=d; $("#expEnd").value=d; renderExport();
+};
+$("#expAll").onclick = ()=>{
+  $("#expStart").value=STATE.dates[0];
+  $("#expEnd").value=STATE.dates[STATE.dates.length-1]; renderExport();
+};
+$("#expStart").onchange = $("#expEnd").onchange = renderExport;
+
+function expRows(){
+  const a=$("#expStart").value, b=$("#expEnd").value;
+  return STATE.rows.filter(r=>!r.separator).filter(r=>{
+    const d=(r.cells[0]||"").slice(0,10);
+    return (!a||d>=a) && (!b||d<=b);
+  });
+}
+
+function renderExport(){
+  if(!STATE) return;
+  const rows=expRows();
+  let boxes=0, amount=0, unknown=0, blanks=0, badPhone=0;
+  rows.forEach(r=>{
+    const m=(r.cells[3]||"").match(/\d+/);
+    if(!m){ unknown++; } else {
+      const n=+m[0]; boxes+=n; amount += n*40000 + Math.ceil(n/2)*5000;
+    }
+    blanks += r.blanks.filter(b=>
+      ["받는사람","받는분전화번호","수량","주소"].includes(b)).length;
+    if(r.phone_error) badPhone++;
+  });
+  const box=$("#expStats"); box.innerHTML="";
+  box.append(statCard("내보낼 주문", rows.length, "건"),
+             statCard("박스", boxes, "박스"),
+             statCard("금액", won(amount), ""),
+             statCard("수량 불명", unknown, "건", unknown>0),
+             statCard("배송 필수 빈 칸", blanks, "칸", blanks>0),
+             statCard("전화 오류", badPhone, "건", badPhone>0));
+
+  const notes=$("#expNotes"); notes.innerHTML="";
+  if(blanks || badPhone){
+    const n=el("div","note warn");
+    const what=[];
+    if(blanks) what.push(`배송에 필요한 칸 ${blanks}개가 비어 있고`);
+    if(badPhone) what.push(`전화번호 자릿수가 틀린 주문이 ${badPhone}건 있습니다`);
+    n.innerHTML=`<b>${what.join(", ")}.</b>
+      이대로는 내보낼 수 없습니다 — 검토 화면에서 고치거나, 내보내기를 누른 뒤
+      경고에서 <b>그래도 내보내기</b>를 선택하세요.`;
+    notes.append(n);
+  }
+
+  const t=$("#expTable"); t.innerHTML="";
+  const head=t.insertRow();
+  STATE.headers.forEach(h=>{ const th=el("th",null,h); sizeTh(th,h); head.append(th); });
+  rows.forEach(r=>{
+    const tr=t.insertRow();
+    STATE.headers.forEach(h=>{
+      const i=STATE.headers.indexOf(h);
+      const td=tr.insertCell(); td.textContent=r.cells[i];
+      if(r.blanks.includes(h)) td.className="blank";
+      if(h==="입력시각"){ td.style.color="var(--faint)";
+        td.style.fontSize="11.5px"; td.style.whiteSpace="nowrap"; }
+    });
+  });
+  if(!rows.length){
+    const tr=t.insertRow(), td=tr.insertCell();
+    td.colSpan=STATE.headers.length;
+    td.append(el("div","empty","선택한 기간에 주문이 없습니다."));
+  }
+}
+
+$("#doExport").onclick = ()=>download(false);
+
+async function download(force){
+  const p=new URLSearchParams({start:$("#expStart").value, end:$("#expEnd").value,
+                               format:$("#expFormat").value, force:force?"1":"0"});
+  $("#doExport").disabled=true;
+  try{
+    const r=await fetch("/api/export?"+p);
+    if(r.status===409){
+      const {error}=await r.json();
+      const gaps=JSON.parse(error).gaps;
+      const lines=gaps.slice(0,12).map(g=>
+        `  ${g.row}행 ${g.name||"(이름없음)"} — ${g.reason ? g.col+" "+g.reason : g.col+" 비어 있음"}`);
+      if(gaps.length>12) lines.push(`  … 외 ${gaps.length-12}개`);
+      if(confirm(`내보내기 전에 확인할 것이 ${gaps.length}개 있습니다.\n\n${lines.join("\n")}\n\n`+
+                 `이대로 택배업체에 보내면 배송이 안 나가거나 반송될 수 있습니다.\n`+
+                 `그래도 내보낼까요?`)) return download(true);
+      return;
+    }
+    if(!r.ok){ const d=await r.json().catch(()=>({}));
+      throw new Error(d.error||`오류 ${r.status}`); }
+
+    const cd=r.headers.get("Content-Disposition")||"";
+    const m=cd.match(/filename\*=UTF-8''(.+)$/);
+    const name=m?decodeURIComponent(m[1])
+                :`복숭아출고.${$("#expFormat").value}`;
+    const blob=await r.blob();
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast(`${name} 내려받았습니다.`);
+  }catch(e){ alert("내보내지 못했습니다.\n\n"+e.message); }
+  finally{ $("#doExport").disabled=false; }
+}
+
+/* ── 시작 ───────────────────────────────────────────── */
+load().catch(e=>{
+  document.querySelector("main").prepend(
+    Object.assign(el("div","note err"),
+      {textContent:"서버에 연결하지 못했습니다: "+e.message}));
+});
+</script>
+</body>
+</html>
