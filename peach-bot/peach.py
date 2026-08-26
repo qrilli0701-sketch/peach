@@ -57,14 +57,20 @@ def with_retry(fn, attempts=4, base=1.5):
             time.sleep(wait)
 
 
-def get_sheet():
+def get_sheet(spreadsheet_id=None):
+    """시트 핸들. spreadsheet_id 를 안 주면 .env 의 SPREADSHEET_ID 를 쓴다(원래 동작).
+
+    웹 UI 는 원래 작업과 다른 시트를 쓰려고 UI_SPREADSHEET_ID 를 넘긴다.
+    자격증명(서비스 계정)은 두 시트가 공유한다 — 같은 계정이 둘 다 편집자면 된다.
+    """
     base = os.path.dirname(os.path.abspath(__file__))
     cred_file = os.getenv("GOOGLE_CREDENTIALS_FILE")
     if not os.path.isabs(cred_file):
         cred_file = os.path.join(base, cred_file)
     creds = Credentials.from_service_account_file(
         cred_file, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-    return gspread.authorize(creds).open_by_key(os.getenv("SPREADSHEET_ID")).sheet1
+    sid = spreadsheet_id or os.getenv("SPREADSHEET_ID")
+    return gspread.authorize(creds).open_by_key(sid).sheet1
 
 
 def clear_validation(sheet):

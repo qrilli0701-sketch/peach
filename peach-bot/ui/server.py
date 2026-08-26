@@ -143,7 +143,11 @@ class LiveBackend:
     def __init__(self):
         import peach
         self.peach = peach
-        self.sheet = peach.get_sheet()
+        # 웹은 원래 작업과 다른 시트를 쓴다. UI_SPREADSHEET_ID 가 있으면 그걸,
+        # 없으면 원래 SPREADSHEET_ID 로 폴백한다(설정 전엔 지금과 똑같이 동작).
+        sid = os.getenv("UI_SPREADSHEET_ID") or os.getenv("SPREADSHEET_ID")
+        self.sheet = peach.get_sheet(sid)
+        self._sheet_id = sid
         self._last_backup = 0.0
         peach.init_sheet(self.sheet)
 
@@ -484,6 +488,10 @@ def main():
     else:
         try:
             Handler.backend = LiveBackend()
+            sid = Handler.backend._sheet_id or "?"
+            which = ("전용 UI 시트(UI_SPREADSHEET_ID)" if os.getenv("UI_SPREADSHEET_ID")
+                     else "원래 시트(SPREADSHEET_ID) — UI_SPREADSHEET_ID 가 없어 폴백")
+            print(f"   연결된 시트: {which}\n   ...{sid[-8:] if sid else '?'}")
         except Exception as e:
             print(f"❌ 구글시트에 연결하지 못했습니다: {type(e).__name__}: {e}")
             print("   .env 의 SPREADSHEET_ID / GOOGLE_CREDENTIALS_FILE 을 확인하세요.")

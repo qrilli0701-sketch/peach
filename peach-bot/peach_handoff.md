@@ -129,8 +129,21 @@ python intake.py --file <경로> # 이미 파일인 것
 - `주문양식.txt` — 고객에게 카톡으로 뿌릴 주문 양식 (4줄)
 - `export.py` — 날짜 필터, 출고 전 빈칸 검사, xlsx/csv 생성, 박스·금액 계산
 - `ui/server.py`, `ui/index.html`, `run_ui.bat` — 주문 화면 (`ui/README.md` 참고)
-- `.env` (git 제외) — `SPREADSHEET_ID`, `GOOGLE_CREDENTIALS_FILE`, `JUSO_CONFM_KEY`
+- `.env` (git 제외) — `SPREADSHEET_ID`, `UI_SPREADSHEET_ID`(선택), `GOOGLE_CREDENTIALS_FILE`, `JUSO_CONFM_KEY`
 - 시트 열: `입력시각 · 받는사람 · 받는분전화번호 · 수량 · 주소 · 보내는사람 · 보내는분전화번호 · 비고`
+
+## 시트 구성 (2026-08-26 — 웹은 별도 시트)
+
+시트가 **둘**이다. 같은 서비스 계정이 둘 다 편집자다.
+
+| 쓰는 곳 | 환경변수 | 용도 |
+|---|---|---|
+| 원래 복숭아 작업 (CLI·판독팀) | `SPREADSHEET_ID` | 실운영 515건이 쌓인 시트 |
+| 웹 UI | `UI_SPREADSHEET_ID` | 웹 실험용 별도 시트. 실데이터를 안 건드림 |
+
+`UI_SPREADSHEET_ID` 가 비어 있으면 웹도 원래 시트를 쓴다(설정 전 동작).
+그래서 **웹 검토·출고 탭은 웹으로 넣은 것만 보인다** — CLI 로 넣은 515건은 안 보인다.
+이건 격리하려는 의도된 동작이다. 나중에 합치려면 원래 시트를 backup 떠서 옮기면 된다.
 
 ## 결정된 규칙 (중요)
 1. **기록 전 사용자 확인 받기** — 정리한 표를 먼저 보여주고 "넣어" 하면 기록.

@@ -298,6 +298,29 @@ def _():
             "server.add() 가 원문을 재평가해야 한다")
 
 
+# ── F3. 시트 분리 — 웹과 원래 작업이 다른 시트를 쓸 수 있는가 ──
+
+@case("시트", "get_sheet 가 시트 ID 를 인자로 받는다", "2026-08-26 — 웹과 CLI 시트 분리")
+def _():
+    import inspect, peach
+    return ("spreadsheet_id" in inspect.signature(peach.get_sheet).parameters,
+            "get_sheet(spreadsheet_id) 여야 웹이 다른 시트를 지정할 수 있다")
+
+
+@case("시트", "웹은 UI_SPREADSHEET_ID 를 우선하고 없으면 폴백한다", "설정 전엔 지금과 동일하게")
+def _():
+    body = (ROOT / "peach-bot/ui/server.py").read_text(encoding="utf-8")
+    return ('os.getenv("UI_SPREADSHEET_ID") or os.getenv("SPREADSHEET_ID")' in body,
+            "server 가 UI_SPREADSHEET_ID → SPREADSHEET_ID 순으로 읽어야 한다")
+
+
+@case("시트", "CLI 는 인자 없이 get_sheet 를 불러 원래 시트를 유지한다", "원래 복숭아 작업은 안 바뀐다")
+def _():
+    body = (ROOT / "peach-bot/peach.py").read_text(encoding="utf-8")
+    return ("sheet = get_sheet()" in body,
+            "peach.py main 은 get_sheet() 를 인자 없이 불러야 한다")
+
+
 # ── G. 판독기록 ─────────────────────────────────────────────
 
 @case("기록", "개인정보는 판독기록에 들어가지 않는다", "로그가 새도 고객 정보는 안 새야 한다")
