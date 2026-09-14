@@ -3,123 +3,242 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
   <style>
-    :root{--accent:#E0673F;--ink:#2C221B;--soft:#6E5D50;--line:#E6D8CA;--ground:#FBF5EF;--panel:#fff}
+    :root{
+      --ground:#FBF5EF; --panel:#FFFFFF; --panel-2:#F7EEE5;
+      --ink:#2C221B; --soft:#6E5D50; --line:#E6D8CA;
+      --accent:#E0673F; --accent-dk:#C6552F; --accent-soft:#F7DFD3;
+      --danger:#C0392B; --shadow:0 1px 2px rgba(60,40,25,.05),0 8px 24px rgba(60,40,25,.07);
+    }
+    @media (prefers-color-scheme:dark){:root{
+      --ground:#1E1712; --panel:#2A211B; --panel-2:#332821;
+      --ink:#F1E7DD; --soft:#B7A596; --line:#42342A;
+      --accent:#F08A63; --accent-dk:#F5A582; --accent-soft:#4A2E22;
+      --danger:#E8776A; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
+    }}
     *{box-sizing:border-box}
     body{margin:0;background:var(--ground);color:var(--ink);
-      font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-      line-height:1.5;padding:20px 16px 60px}
-    .wrap{max-width:520px;margin:0 auto}
-    h1{font-size:1.5rem;margin:0 0 4px}
-    .desc{color:var(--soft);font-size:.9rem;margin:0 0 20px}
-    fieldset{border:1px solid var(--line);border-radius:12px;background:var(--panel);
-      margin:0 0 16px;padding:14px 16px}
-    legend{font-weight:700;font-size:.95rem;padding:0 6px;color:var(--accent)}
-    label{display:block;font-size:.82rem;font-weight:600;margin:10px 0 4px}
-    input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
-      font-size:1rem;background:#fff;color:var(--ink)}
-    input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent}
-    .rcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:var(--panel)}
-    .rhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
-    .rhead b{font-size:.9rem}
-    .del{background:none;border:none;color:#c0392b;font-size:.82rem;cursor:pointer;padding:4px}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    button.add{width:100%;padding:12px;border:1.5px dashed var(--accent);background:transparent;
-      color:var(--accent);border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:20px}
-    button.submit{width:100%;padding:15px;border:none;background:var(--accent);color:#fff;
-      border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer}
+      font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo",sans-serif;
+      line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 110px}
+    .wrap{max-width:540px;margin:0 auto;padding:0 18px}
+
+    /* 상단 사진 배너 */
+    .banner{max-width:540px;margin:0 auto 0;height:190px;overflow:hidden;
+      background:linear-gradient(135deg,#F3B9A0,#E0673F);
+      display:flex;align-items:center;justify-content:center}
+    .banner img{width:100%;height:100%;object-fit:cover;display:block}
+    .banner .ph{font-size:3.2rem}
+
+    .hero{text-align:center;margin:22px 0 18px}
+    .hero h1{font-family:"Gowun Batang",serif;font-size:1.8rem;margin:0 0 4px}
+    .hero p{color:var(--soft);font-size:.9rem;margin:0}
+
+    /* 안내 카드 */
+    .info{border:1px solid var(--line);border-radius:16px;background:var(--panel-2);
+      padding:16px 18px;margin-bottom:18px;font-size:.86rem}
+    .info h3{font-family:"Gowun Batang",serif;color:var(--accent);font-size:1rem;margin:0 0 8px}
+    .info h3:not(:first-child){margin-top:16px}
+    .info p{margin:3px 0;color:var(--ink)}
+    .info .em{font-weight:700}
+    .info .small{color:var(--soft);font-size:.8rem}
+
+    fieldset{border:1px solid var(--line);border-radius:16px;background:var(--panel);
+      margin:0 0 18px;padding:16px 18px 20px;box-shadow:var(--shadow)}
+    legend{font-family:"Gowun Batang",serif;font-weight:700;font-size:1rem;padding:0 8px;color:var(--accent)}
+    label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 5px;color:var(--soft)}
+    input{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:10px;
+      font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit;transition:border-color .15s}
+    input::placeholder{color:var(--soft);opacity:.55}
+    input:focus{outline:none;border-color:var(--accent)}
+    input.bad{border-color:var(--danger);background:rgba(192,57,43,.05)}
+
+    .rcard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;
+      background:var(--panel);box-shadow:var(--shadow)}
+    .rhead{display:flex;align-items:center;gap:8px}
+    .rhead .badge{display:inline-flex;align-items:center;justify-content:center;
+      width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-dk);
+      font-size:.8rem;font-weight:700}
+    .rhead b{font-size:.9rem;flex:1}
+    .del{background:none;border:none;color:var(--danger);font-size:.8rem;cursor:pointer;padding:6px 4px;font-family:inherit}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+
+    button.add{width:100%;padding:14px;border:1.5px dashed var(--accent);background:transparent;
+      color:var(--accent);border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;
+      font-family:inherit;margin-bottom:8px}
+    button.add:active{background:var(--accent-soft)}
+
+    .footbar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
+      border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(60,40,25,.08);
+      padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:10}
+    .footbar .inner{max-width:540px;margin:0 auto;display:flex;align-items:center;gap:12px}
+    .tally{flex:1;font-size:.8rem;color:var(--soft);line-height:1.35}
+    .tally b{color:var(--ink);font-weight:700}
+    .tally .amt{color:var(--accent);font-weight:700}
+    button.submit{flex:none;padding:14px 24px;border:none;background:var(--accent);color:#fff;
+      border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit}
+    button.submit:active{background:var(--accent-dk)}
     button.submit:disabled{opacity:.5}
-    .err{color:#c0392b;font-size:.8rem;margin-top:6px;min-height:1em}
-    .hint{color:var(--soft);font-size:.72rem;margin-top:3px}
-    #done{text-align:center;padding:40px 20px}
-    #done .big{font-size:3rem}
-    #done h2{color:var(--accent)}
+
+    .err{color:var(--danger);font-size:.82rem;margin:8px 0 0;min-height:1em;text-align:center}
+    .hint{color:var(--soft);font-size:.72rem;font-weight:400}
+
+    #done{text-align:center;padding:60px 24px}
+    #done .big{font-size:3.4rem}
+    #done h2{font-family:"Gowun Batang",serif;color:var(--accent);margin:10px 0 6px}
+    #done p{color:var(--soft)}
+    #done button{margin-top:20px;padding:13px 26px;border:1.5px solid var(--accent);background:transparent;
+      color:var(--accent);border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit}
   </style>
 </head>
 <body>
-  <div class="wrap" id="form">
-    <h1>🍑 복숭아 주문</h1>
-    <p class="desc">보내는 분 정보는 한 번만, 받는 분은 필요한 만큼 추가해주세요.</p>
+  <div id="form">
+    <!-- ▼▼ 사진 넣기: 아래 IMG_URL 에 복숭아 사진 링크를 붙여넣으면 배너에 뜹니다 ▼▼ -->
+    <div class="banner" id="banner"><span class="ph">🍑</span></div>
 
-    <fieldset>
-      <legend>보내는 분</legend>
-      <label>성함</label>
-      <input id="senderName" placeholder="홍길동">
-      <label>연락처 (- 없이 숫자 11자리)</label>
-      <input id="senderPhone" inputmode="numeric" placeholder="01012345678">
-    </fieldset>
+    <div class="wrap">
+      <div class="hero">
+        <h1>임가네 복숭아 주문</h1>
+        <p>충북 괴산 · 산지직송</p>
+      </div>
 
-    <div id="recipients"></div>
-    <button class="add" onclick="addRecipient()">+ 받는 분 추가</button>
+      <div class="info">
+        <h3>복숭아 가격</h3>
+        <p class="small">*택배는 두 상자까지 묶음 배송 가능합니다</p>
+        <p><span class="em">복숭아 1box 40,000원</span> / 배송료 5,000원</p>
+        <p class="small">예) 1Box(택배비 포함) 45,000원 · 2Box(택배비 포함) 85,000원</p>
 
-    <button class="submit" id="submitBtn" onclick="submitForm()">주문 완료</button>
-    <p class="err" id="formErr"></p>
+        <h3>꿀팁</h3>
+        <p>복숭아는 후숙 과일이라, 배송 도착 후 실온에 2일 정도 두고 드시면 더욱 맛있어요 :)</p>
+
+        <h3>안내사항</h3>
+        <p class="small">· 날씨에 따라 수확 시기가 변동될 수 있습니다.</p>
+        <p class="small">· 무더운 날씨에 아버지가 직접 따고 포장하시느라 배송이 지연될 수 있어요. 너그러이 이해해주세요.</p>
+        <p class="small">· 많이 감사합니다. ^_^</p>
+      </div>
+
+      <fieldset>
+        <legend>보내는 분</legend>
+        <label>성함</label>
+        <input id="senderName" placeholder="홍길동">
+        <label>연락처 <span class="hint">(- 없이 숫자 11자리)</span></label>
+        <input id="senderPhone" inputmode="numeric" placeholder="01012345678">
+      </fieldset>
+
+      <div id="recipients"></div>
+      <button class="add" onclick="addRecipient()">＋ 받는 분 추가</button>
+      <p class="err" id="formErr"></p>
+    </div>
   </div>
 
-  <div class="wrap" id="done" style="display:none">
+  <div class="footbar" id="footbar">
+    <div class="inner">
+      <div class="tally" id="tally">받는 분 <b>0명</b> · 총 <b>0박스</b></div>
+      <button class="submit" id="submitBtn" onclick="submitForm()">주문 완료</button>
+    </div>
+  </div>
+
+  <div id="done" style="display:none">
     <div class="big">🍑</div>
     <h2>주문이 접수되었습니다</h2>
-    <p class="desc" id="doneMsg"></p>
-    <button class="submit" onclick="location.reload()">새 주문 작성</button>
+    <p id="doneMsg"></p>
+    <button onclick="location.reload()">새 주문 작성</button>
   </div>
 
 <script>
+  // ★ 복숭아 사진을 넣으려면 아래 따옴표 안에 이미지 URL을 붙여넣으세요 (비워두면 🍑 배너)
+  var IMG_URL = "";
+
+  if (IMG_URL) {
+    var b = document.getElementById('banner');
+    b.innerHTML = '<img src="'+IMG_URL+'" alt="임가네 복숭아">';
+  }
+
   var idx = 0;
   function addRecipient(){
     idx++;
     var d = document.createElement('div');
     d.className = 'rcard';
     d.innerHTML =
-      '<div class="rhead"><b>받는 분 ' + idx + '</b>' +
-      '<button class="del" onclick="this.closest(\'.rcard\').remove()">삭제</button></div>' +
+      '<div class="rhead"><span class="badge">'+idx+'</span><b>받는 분</b>' +
+      '<button class="del" onclick="removeCard(this)">삭제</button></div>' +
       '<label>성함</label><input class="r-name" placeholder="받는 분 성함">' +
-      '<label>연락처 (- 없이 11자리)</label><input class="r-phone" inputmode="numeric" placeholder="01098765432">' +
-      '<label>주소 (동·호수까지)</label><input class="r-addr" placeholder="서울시 ...">' +
-      '<div class="grid2"><div><label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1"></div>' +
-      '<div><label>품종</label><select class="r-variety">' +
-      '<option value="">선택</option><option>황도</option><option>백도</option><option>천중도</option><option>기타</option>' +
-      '</select></div></div>';
+      '<label>연락처 <span class="hint">(- 없이 11자리)</span></label>' +
+      '<input class="r-phone" inputmode="numeric" placeholder="01098765432">' +
+      '<label>주소 <span class="hint">(동·호수까지)</span></label>' +
+      '<input class="r-addr" placeholder="서울시 ...">' +
+      '<label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1" oninput="updateTally()">';
     document.getElementById('recipients').appendChild(d);
+    renumber(); updateTally();
   }
-  addRecipient(); // 처음 한 줄 기본 표시
+
+  function removeCard(btn){ btn.closest('.rcard').remove(); renumber(); updateTally(); }
+
+  function renumber(){
+    var cards = document.querySelectorAll('.rcard');
+    for(var i=0;i<cards.length;i++){ cards[i].querySelector('.badge').textContent = (i+1); }
+  }
+
+  function updateTally(){
+    var cards = document.querySelectorAll('.rcard');
+    var people=0, boxes=0, amount=0;
+    for(var i=0;i<cards.length;i++){
+      var nm = cards[i].querySelector('.r-name').value.trim();
+      var q = parseInt(cards[i].querySelector('.r-qty').value,10);
+      if(nm) people++;
+      if(!isNaN(q) && q>0){ boxes += q; amount += q*40000 + Math.ceil(q/2)*5000; }
+    }
+    var t = '받는 분 <b>'+people+'명</b> · 총 <b>'+boxes+'박스</b>';
+    if(amount>0) t += '<br><span class="amt">예상 '+amount.toLocaleString()+'원</span> <span class="hint">(택배비 포함)</span>';
+    document.getElementById('tally').innerHTML = t;
+  }
+
+  document.addEventListener('input', function(e){
+    if(e.target.classList){ e.target.classList.remove('bad'); if(e.target.classList.contains('r-name')) updateTally(); }
+  });
+
+  addRecipient();
+
+  function mark(el){ el.classList.add('bad'); el.focus(); }
 
   function submitForm(){
-    var err = document.getElementById('formErr');
-    err.textContent = '';
-    var sName = document.getElementById('senderName').value.trim();
-    var sPhone = document.getElementById('senderPhone').value.trim();
-    if(!sName){ err.textContent='보내는 분 성함을 입력해주세요.'; return; }
-    if(!/^01[0-9]{9}$/.test(sPhone)){ err.textContent='보내는 분 연락처는 - 없이 숫자 11자리로 입력해주세요.'; return; }
+    var err = document.getElementById('formErr'); err.textContent='';
+    var sNameEl=document.getElementById('senderName'), sPhoneEl=document.getElementById('senderPhone');
+    var sName=sNameEl.value.trim(), sPhone=sPhoneEl.value.trim();
+    if(!sName){ err.textContent='보내는 분 성함을 입력해주세요.'; mark(sNameEl); return; }
+    if(!/^01[0-9]{9}$/.test(sPhone)){ err.textContent='보내는 분 연락처는 숫자 11자리로 입력해주세요.'; mark(sPhoneEl); return; }
 
-    var cards = document.querySelectorAll('.rcard');
-    var recipients = [];
+    var cards=document.querySelectorAll('.rcard'), recipients=[];
     for(var i=0;i<cards.length;i++){
-      var c = cards[i];
-      var name = c.querySelector('.r-name').value.trim();
-      var phone = c.querySelector('.r-phone').value.trim();
-      var addr = c.querySelector('.r-addr').value.trim();
-      var qty = c.querySelector('.r-qty').value.trim();
-      var variety = c.querySelector('.r-variety').value;
-      if(!name && !phone && !addr) continue; // 빈 카드 무시
-      if(!name){ err.textContent=(i+1)+'번째 받는 분 성함을 입력해주세요.'; return; }
-      if(!/^01[0-9]{9}$/.test(phone)){ err.textContent=name+' 님 연락처를 숫자 11자리로 입력해주세요.'; return; }
-      if(!addr){ err.textContent=name+' 님 주소를 입력해주세요.'; return; }
-      if(!qty){ err.textContent=name+' 님 수량을 입력해주세요.'; return; }
-      recipients.push({name:name,phone:phone,addr:addr,qty:qty,variety:variety});
+      var c=cards[i];
+      var nEl=c.querySelector('.r-name'), pEl=c.querySelector('.r-phone'),
+          aEl=c.querySelector('.r-addr'), qEl=c.querySelector('.r-qty');
+      var name=nEl.value.trim(), phone=pEl.value.trim(), addr=aEl.value.trim(), qty=qEl.value.trim();
+      if(!name && !phone && !addr && !qty) continue;
+      if(!name){ err.textContent=(i+1)+'번째 받는 분 성함을 입력해주세요.'; mark(nEl); return; }
+      if(!/^01[0-9]{9}$/.test(phone)){ err.textContent=name+' 님 연락처를 숫자 11자리로 입력해주세요.'; mark(pEl); return; }
+      if(!addr){ err.textContent=name+' 님 주소를 입력해주세요.'; mark(aEl); return; }
+      if(!qty){ err.textContent=name+' 님 수량을 입력해주세요.'; mark(qEl); return; }
+      recipients.push({name:name,phone:phone,addr:addr,qty:qty});
     }
     if(!recipients.length){ err.textContent='받는 분을 한 명 이상 입력해주세요.'; return; }
 
-    var btn = document.getElementById('submitBtn');
-    btn.disabled = true; btn.textContent = '전송 중...';
+    var btn=document.getElementById('submitBtn');
+    btn.disabled=true; btn.textContent='전송 중…';
     google.script.run
       .withSuccessHandler(function(n){
         document.getElementById('form').style.display='none';
-        document.getElementById('doneMsg').textContent = n + '건의 주문이 접수되었습니다. 감사합니다!';
+        document.getElementById('footbar').style.display='none';
+        document.getElementById('doneMsg').textContent = n+'건의 주문이 접수되었습니다. 감사합니다!';
         document.getElementById('done').style.display='block';
+        window.scrollTo(0,0);
       })
       .withFailureHandler(function(e){
         btn.disabled=false; btn.textContent='주문 완료';
-        err.textContent = '전송 실패: ' + e.message;
+        err.textContent='전송 실패: '+e.message;
       })
       .submitOrder({senderName:sName, senderPhone:sPhone, recipients:recipients});
   }
