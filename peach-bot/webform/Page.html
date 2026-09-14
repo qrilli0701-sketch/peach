@@ -125,7 +125,7 @@
         <label>성함</label>
         <input id="senderName" placeholder="홍길동">
         <label>연락처 <span class="hint">(- 없이 숫자 11자리)</span></label>
-        <input id="senderPhone" inputmode="numeric" placeholder="01012345678">
+        <input id="senderPhone" inputmode="numeric" maxlength="11" placeholder="01012345678">
       </fieldset>
 
       <div id="recipients"></div>
@@ -167,7 +167,7 @@
       '<button class="del" onclick="removeCard(this)">삭제</button></div>' +
       '<label>성함</label><input class="r-name" placeholder="받는 분 성함">' +
       '<label>연락처 <span class="hint">(- 없이 11자리)</span></label>' +
-      '<input class="r-phone" inputmode="numeric" placeholder="01098765432">' +
+      '<input class="r-phone" inputmode="numeric" maxlength="11" placeholder="01098765432">' +
       '<label>주소 <span class="hint">(동·호수까지)</span></label>' +
       '<input class="r-addr" placeholder="서울시 ...">' +
       '<label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1" oninput="updateTally()">';
@@ -197,7 +197,15 @@
   }
 
   document.addEventListener('input', function(e){
-    if(e.target.classList){ e.target.classList.remove('bad'); if(e.target.classList.contains('r-name')) updateTally(); }
+    var t = e.target;
+    if(!t.classList) return;
+    // 전화번호 칸: 숫자만, 최대 11자리로 즉시 제한
+    if(t.id==='senderPhone' || t.classList.contains('r-phone')){
+      var v = t.value.replace(/[^0-9]/g,'').slice(0,11);
+      if(v !== t.value) t.value = v;
+    }
+    t.classList.remove('bad');
+    if(t.classList.contains('r-name')) updateTally();
   });
 
   addRecipient();
