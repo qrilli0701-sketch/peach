@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    :root{--accent:#E0673F;--ink:#2C221B;--soft:#6E5D50;--line:#E6D8CA;--ground:#FBF5EF;--panel:#fff}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--ground);color:var(--ink);
+      font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+      line-height:1.5;padding:20px 16px 60px}
+    .wrap{max-width:520px;margin:0 auto}
+    h1{font-size:1.5rem;margin:0 0 4px}
+    .desc{color:var(--soft);font-size:.9rem;margin:0 0 20px}
+    fieldset{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+      margin:0 0 16px;padding:14px 16px}
+    legend{font-weight:700;font-size:.95rem;padding:0 6px;color:var(--accent)}
+    label{display:block;font-size:.82rem;font-weight:600;margin:10px 0 4px}
+    input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+      font-size:1rem;background:#fff;color:var(--ink)}
+    input:focus,select:focus{outline:2px solid var(--accent);border-color:transparent}
+    .rcard{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:var(--panel)}
+    .rhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .rhead b{font-size:.9rem}
+    .del{background:none;border:none;color:#c0392b;font-size:.82rem;cursor:pointer;padding:4px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    button.add{width:100%;padding:12px;border:1.5px dashed var(--accent);background:transparent;
+      color:var(--accent);border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;margin-bottom:20px}
+    button.submit{width:100%;padding:15px;border:none;background:var(--accent);color:#fff;
+      border-radius:10px;font-size:1.05rem;font-weight:700;cursor:pointer}
+    button.submit:disabled{opacity:.5}
+    .err{color:#c0392b;font-size:.8rem;margin-top:6px;min-height:1em}
+    .hint{color:var(--soft);font-size:.72rem;margin-top:3px}
+    #done{text-align:center;padding:40px 20px}
+    #done .big{font-size:3rem}
+    #done h2{color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap" id="form">
+    <h1>🍑 복숭아 주문</h1>
+    <p class="desc">보내는 분 정보는 한 번만, 받는 분은 필요한 만큼 추가해주세요.</p>
+
+    <fieldset>
+      <legend>보내는 분</legend>
+      <label>성함</label>
+      <input id="senderName" placeholder="홍길동">
+      <label>연락처 (- 없이 숫자 11자리)</label>
+      <input id="senderPhone" inputmode="numeric" placeholder="01012345678">
+    </fieldset>
+
+    <div id="recipients"></div>
+    <button class="add" onclick="addRecipient()">+ 받는 분 추가</button>
+
+    <button class="submit" id="submitBtn" onclick="submitForm()">주문 완료</button>
+    <p class="err" id="formErr"></p>
+  </div>
+
+  <div class="wrap" id="done" style="display:none">
+    <div class="big">🍑</div>
+    <h2>주문이 접수되었습니다</h2>
+    <p class="desc" id="doneMsg"></p>
+    <button class="submit" onclick="location.reload()">새 주문 작성</button>
+  </div>
+
+<script>
+  var idx = 0;
+  function addRecipient(){
+    idx++;
+    var d = document.createElement('div');
+    d.className = 'rcard';
+    d.innerHTML =
+      '<div class="rhead"><b>받는 분 ' + idx + '</b>' +
+      '<button class="del" onclick="this.closest(\'.rcard\').remove()">삭제</button></div>' +
+      '<label>성함</label><input class="r-name" placeholder="받는 분 성함">' +
+      '<label>연락처 (- 없이 11자리)</label><input class="r-phone" inputmode="numeric" placeholder="01098765432">' +
+      '<label>주소 (동·호수까지)</label><input class="r-addr" placeholder="서울시 ...">' +
+      '<div class="grid2"><div><label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1"></div>' +
+      '<div><label>품종</label><select class="r-variety">' +
+      '<option value="">선택</option><option>황도</option><option>백도</option><option>천중도</option><option>기타</option>' +
+      '</select></div></div>';
+    document.getElementById('recipients').appendChild(d);
+  }
+  addRecipient(); // 처음 한 줄 기본 표시
+
+  function submitForm(){
+    var err = document.getElementById('formErr');
+    err.textContent = '';
+    var sName = document.getElementById('senderName').value.trim();
+    var sPhone = document.getElementById('senderPhone').value.trim();
+    if(!sName){ err.textContent='보내는 분 성함을 입력해주세요.'; return; }
+    if(!/^01[0-9]{9}$/.test(sPhone)){ err.textContent='보내는 분 연락처는 - 없이 숫자 11자리로 입력해주세요.'; return; }
+
+    var cards = document.querySelectorAll('.rcard');
+    var recipients = [];
+    for(var i=0;i<cards.length;i++){
+      var c = cards[i];
+      var name = c.querySelector('.r-name').value.trim();
+      var phone = c.querySelector('.r-phone').value.trim();
+      var addr = c.querySelector('.r-addr').value.trim();
+      var qty = c.querySelector('.r-qty').value.trim();
+      var variety = c.querySelector('.r-variety').value;
+      if(!name && !phone && !addr) continue; // 빈 카드 무시
+      if(!name){ err.textContent=(i+1)+'번째 받는 분 성함을 입력해주세요.'; return; }
+      if(!/^01[0-9]{9}$/.test(phone)){ err.textContent=name+' 님 연락처를 숫자 11자리로 입력해주세요.'; return; }
+      if(!addr){ err.textContent=name+' 님 주소를 입력해주세요.'; return; }
+      if(!qty){ err.textContent=name+' 님 수량을 입력해주세요.'; return; }
+      recipients.push({name:name,phone:phone,addr:addr,qty:qty,variety:variety});
+    }
+    if(!recipients.length){ err.textContent='받는 분을 한 명 이상 입력해주세요.'; return; }
+
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = '전송 중...';
+    google.script.run
+      .withSuccessHandler(function(n){
+        document.getElementById('form').style.display='none';
+        document.getElementById('doneMsg').textContent = n + '건의 주문이 접수되었습니다. 감사합니다!';
+        document.getElementById('done').style.display='block';
+      })
+      .withFailureHandler(function(e){
+        btn.disabled=false; btn.textContent='주문 완료';
+        err.textContent = '전송 실패: ' + e.message;
+      })
+      .submitOrder({senderName:sName, senderPhone:sPhone, recipients:recipients});
+  }
+</script>
+</body>
+</html>
