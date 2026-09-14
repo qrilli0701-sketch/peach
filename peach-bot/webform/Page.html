@@ -71,6 +71,14 @@
       font-family:inherit;margin-bottom:8px}
     button.add:active{background:var(--accent-soft)}
 
+    .bulk{border:1px dashed var(--line);border-radius:12px;background:var(--panel-2);
+      padding:14px 16px;margin:4px 0 8px;font-size:.84rem}
+    .bulk p{margin:0 0 10px;color:var(--soft)}
+    .bulk p b{color:var(--ink)}
+    .bulk-btn{display:inline-block;padding:11px 16px;border-radius:10px;background:var(--panel);
+      border:1.5px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none;font-size:.9rem}
+    .bulk-btn:active{background:var(--accent-soft)}
+
     .footbar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
       border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(60,40,25,.08);
       padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:10}
@@ -130,6 +138,12 @@
 
       <div id="recipients"></div>
       <button class="add" onclick="addRecipient()">＋ 받는 분 추가</button>
+
+      <div class="bulk" id="bulkBox" style="display:none">
+        <p>받는 분이 아주 많으신가요? <b>대량(단체) 주문 엑셀 양식</b>을 받아 작성 후 보내주셔도 됩니다.</p>
+        <a class="bulk-btn" id="bulkLink" href="#">📄 대량주문 엑셀 양식 내려받기</a>
+      </div>
+
       <p class="err" id="formErr"></p>
     </div>
   </div>
@@ -157,6 +171,16 @@
     b.innerHTML = '<img src="'+IMG_URL+'" alt="임가네 복숭아">';
   }
 
+  // ★ 대량주문 엑셀 양식 다운로드 링크
+  //   (엑셀 양식을 구글 드라이브에 올린 뒤 파일ID로 아래 주소를 채우면 버튼이 나타납니다)
+  //   형식: https://drive.google.com/uc?export=download&id=파일ID
+  var BULK_XLSX_URL = "";
+  if (BULK_XLSX_URL) {
+    var link = document.getElementById('bulkLink');
+    link.href = BULK_XLSX_URL;
+    document.getElementById('bulkBox').style.display = 'block';
+  }
+
   var idx = 0;
   function addRecipient(){
     idx++;
@@ -170,7 +194,9 @@
       '<input class="r-phone" inputmode="numeric" maxlength="11" placeholder="01098765432">' +
       '<label>주소 <span class="hint">(동·호수까지)</span></label>' +
       '<input class="r-addr" placeholder="서울시 ...">' +
-      '<label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1" oninput="updateTally()">';
+      '<label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1" oninput="updateTally()">' +
+      '<label>요청사항 <span class="hint">(선택)</span></label>' +
+      '<input class="r-note" placeholder="예: OO일까지 도착 희망 / 딱딱한 걸로">';
     document.getElementById('recipients').appendChild(d);
     renumber(); updateTally();
   }
@@ -230,7 +256,8 @@
       if(!/^01[0-9]{9}$/.test(phone)){ err.textContent=name+' 님 연락처를 숫자 11자리로 입력해주세요.'; mark(pEl); return; }
       if(!addr){ err.textContent=name+' 님 주소를 입력해주세요.'; mark(aEl); return; }
       if(!qty){ err.textContent=name+' 님 수량을 입력해주세요.'; mark(qEl); return; }
-      recipients.push({name:name,phone:phone,addr:addr,qty:qty});
+      var note=c.querySelector('.r-note').value.trim();
+      recipients.push({name:name,phone:phone,addr:addr,qty:qty,note:note});
     }
     if(!recipients.length){ err.textContent='받는 분을 한 명 이상 입력해주세요.'; return; }
 

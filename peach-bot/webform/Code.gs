@@ -32,7 +32,7 @@ function submitOrder(data) {
   (data.recipients || []).forEach(function (r) {
     if (!(r.name || '').trim()) return; // 이름 없는 줄은 건너뜀
     rows.push([now, r.name.trim(), (r.phone || '').trim(), (r.qty || '').trim(),
-               (r.addr || '').trim(), sName, sPhone, (r.variety || '').trim(), '접수']);
+               (r.addr || '').trim(), sName, sPhone, (r.note || '').trim(), '접수']);
   });
 
   if (!rows.length) throw new Error('받는 분을 한 명 이상 입력해주세요.');
