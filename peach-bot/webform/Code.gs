@@ -36,6 +36,10 @@ function submitOrder(data) {
   });
 
   if (!rows.length) throw new Error('받는 분을 한 명 이상 입력해주세요.');
-  sh.getRange(sh.getLastRow() + 1, 1, rows.length, HEADERS.length).setValues(rows);
+  var start = sh.getLastRow() + 1;
+  // 전화번호 열(C=받는분, G=보내는분)을 텍스트로 지정해 앞자리 0 이 사라지지 않게 한다
+  sh.getRange(start, 3, rows.length, 1).setNumberFormat('@');
+  sh.getRange(start, 7, rows.length, 1).setNumberFormat('@');
+  sh.getRange(start, 1, rows.length, HEADERS.length).setValues(rows);
   return rows.length;
 }

@@ -163,7 +163,7 @@
     <div class="big">🍑</div>
     <h2>주문이 접수되었습니다</h2>
     <p id="doneMsg"></p>
-    <button onclick="location.reload()">새 주문 작성</button>
+    <button onclick="resetForm()">새 주문 작성</button>
   </div>
 
 <script>
@@ -239,6 +239,23 @@
   });
 
   addRecipient();
+
+  // 완료 후 새 주문 — 새로고침(iframe에서 멈춤) 대신 폼을 그 자리에서 초기화
+  function resetForm(){
+    document.getElementById('senderName').value = '';
+    document.getElementById('senderPhone').value = '';
+    document.getElementById('recipients').innerHTML = '';
+    idx = 0;
+    addRecipient();
+    document.getElementById('formErr').textContent = '';
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = false; btn.textContent = '주문 완료';
+    document.getElementById('done').style.display = 'none';
+    document.getElementById('form').style.display = 'block';
+    document.getElementById('footbar').style.display = 'block';
+    updateTally();
+    window.scrollTo(0,0);
+  }
 
   function mark(el){ el.classList.add('bad'); el.focus(); }
 

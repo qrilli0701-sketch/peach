@@ -93,7 +93,10 @@ function appendToQueue_(rows, msg) {
     var note = r[6] ? (r[6] + ' ') : '';
     return [now, r[0], r[1], r[2], r[3], r[4], r[5], (note + '[메일:' + from + ']').trim(), '접수'];
   });
-  sh.getRange(sh.getLastRow() + 1, 1, data.length, HEADERS.length).setValues(data);
+  var start = sh.getLastRow() + 1;
+  sh.getRange(start, 3, data.length, 1).setNumberFormat('@');  // 받는분전화번호
+  sh.getRange(start, 7, data.length, 1).setNumberFormat('@');  // 보내는분전화번호
+  sh.getRange(start, 1, data.length, HEADERS.length).setValues(data);
 }
 
 /** 숫자만 남기고, 앞자리 0 이 사라진 10자리(1로 시작)면 0 을 붙여 11자리로 복원 */
