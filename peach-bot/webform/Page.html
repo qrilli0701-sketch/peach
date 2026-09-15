@@ -71,10 +71,12 @@
       font-family:inherit;margin-bottom:8px}
     button.add:active{background:var(--accent-soft)}
 
-    .bulk{border:1px dashed var(--line);border-radius:12px;background:var(--panel-2);
-      padding:14px 16px;margin:4px 0 8px;font-size:.84rem}
-    .bulk p{margin:0 0 10px;color:var(--soft)}
-    .bulk p b{color:var(--ink)}
+    .bulk{border:1.5px solid var(--accent-soft);border-radius:14px;background:var(--panel-2);
+      padding:16px 18px;margin:6px 0 10px;font-size:.84rem}
+    .bulk .bulk-title{font-family:"Gowun Batang",serif;font-weight:700;font-size:1rem;
+      color:var(--accent);margin:0 0 8px}
+    .bulk p{margin:0 0 12px;color:var(--soft);line-height:1.6}
+    .bulk p b{color:var(--accent);font-weight:700}
     .bulk-btn{display:inline-block;padding:11px 16px;border-radius:10px;background:var(--panel);
       border:1.5px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none;font-size:.9rem}
     .bulk-btn:active{background:var(--accent-soft)}
@@ -140,7 +142,9 @@
       <button class="add" onclick="addRecipient()">＋ 받는 분 추가</button>
 
       <div class="bulk" id="bulkBox" style="display:none">
-        <p>받는 분이 아주 많으신가요? <b>대량(단체) 주문 엑셀 양식</b>을 받아 작성 후 보내주셔도 됩니다.</p>
+        <p class="bulk-title">📦 대량 주문은 여기로!</p>
+        <p>받는 분이 많으시면 엑셀 양식으로 한 번에 주문하실 수 있어요.<br>
+           ① 양식 내려받기 → ② 작성 → ③ <b>qrilli0701@gmail.com</b> 으로 메일 전송</p>
         <a class="bulk-btn" id="bulkLink" href="#">📄 대량주문 엑셀 양식 내려받기</a>
       </div>
 
