@@ -277,6 +277,7 @@
       if(!/^01[0-9]{9}$/.test(phone)){ err.textContent=name+' 님 연락처를 숫자 11자리로 입력해주세요.'; mark(pEl); return; }
       if(!addr){ err.textContent=name+' 님 주소를 입력해주세요.'; mark(aEl); return; }
       if(!qty){ err.textContent=name+' 님 수량을 입력해주세요.'; mark(qEl); return; }
+      if(!/^[0-9]+$/.test(qty) || parseInt(qty,10) < 1){ err.textContent=name+' 님 수량은 1 이상의 숫자로 입력해주세요.'; mark(qEl); return; }
       var note=c.querySelector('.r-note').value.trim();
       recipients.push({name:name,phone:phone,addr:addr,qty:qty,note:note});
     }
