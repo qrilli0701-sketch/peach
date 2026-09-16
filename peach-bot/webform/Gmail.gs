@@ -45,14 +45,29 @@ function processOrderEmails() {
   });
 }
 
+/** 첨부 xlsx 를 Google 시트로 변환하고 파일 id 반환 (Drive 고급서비스 v2/v3 모두 지원) */
+function xlsxToSheetId_(blob) {
+  var meta = { name: 'temp_order_' + Date.now(), mimeType: 'application/vnd.google-apps.spreadsheet' };
+  if (Drive.Files && typeof Drive.Files.create === 'function') {      // v3
+    return Drive.Files.create(meta, blob).id;
+  }
+  if (Drive.Files && typeof Drive.Files.insert === 'function') {      // v2
+    return Drive.Files.insert({ title: meta.name }, blob, { convert: true }).id;
+  }
+  throw new Error('Drive Files API(create/insert) 를 사용할 수 없습니다.');
+}
+
+/** 삭제 (v2/v3 모두 지원) */
+function removeFile_(id) {
+  try {
+    if (Drive.Files && typeof Drive.Files.remove === 'function') Drive.Files.remove(id);
+    else if (Drive.Files && typeof Drive.Files.trash === 'function') Drive.Files.trash(id);
+  } catch (e) {}
+}
+
 /** 첨부 xlsx → Google 시트로 변환 후, 우리 양식대로 파싱해 행 배열 반환 */
 function parseTemplate_(attachment) {
-  // Drive 고급 서비스로 xlsx 를 구글 시트로 변환
-  var file = Drive.Files.insert(
-    { title: 'temp_order_' + Date.now() },
-    attachment.copyBlob(),
-    { convert: true });
-  var ssId = file.id;
+  var ssId = xlsxToSheetId_(attachment.copyBlob());
   try {
     var sh = SpreadsheetApp.openById(ssId).getSheets()[0];
     var v = sh.getDataRange().getValues();
@@ -75,7 +90,7 @@ function parseTemplate_(attachment) {
     }
     return out;
   } finally {
-    try { Drive.Files.remove(ssId); } catch (e) {}   // 임시 시트 삭제
+    removeFile_(ssId);   // 임시 시트 삭제
   }
 }
 
