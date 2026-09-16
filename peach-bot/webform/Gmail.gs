@@ -104,14 +104,26 @@ function appendToQueue_(rows, msg) {
   var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
   var from = msg.getFrom();
   var data = rows.map(function (r) {
-    // HEADERS: 접수시각·받는사람·받는분전화번호·수량·주소·보내는사람·보내는분전화번호·비고·상태
-    var note = r[6] ? (r[6] + ' ') : '';
-    return [now, r[0], r[1], r[2], r[3], r[4], r[5], (note + '[메일:' + from + ']').trim(), '접수'];
+    // r: [받는사람, 받는전화, 수량, 주소, 보내는사람, 보내는전화, 비고]
+    var miss = [];
+    if (!r[1]) miss.push('받는분전화');
+    if (!r[2] || !/^[0-9]+$/.test(r[2]) || parseInt(r[2], 10) < 1) miss.push('수량');
+    if (!r[3]) miss.push('주소');
+    if (!r[4]) miss.push('보내는사람');
+    if (!r[5]) miss.push('보내는분전화');
+    var status = miss.length ? '확인필요' : '접수';
+    var bigo = (r[6] ? r[6] + ' ' : '') + '[메일:' + from + ']' +
+               (miss.length ? ' [미비:' + miss.join(',') + ']' : '');
+    return [now, r[0], r[1], r[2], r[3], r[4], r[5], bigo.trim(), status];
   });
   var start = sh.getLastRow() + 1;
   sh.getRange(start, 3, data.length, 1).setNumberFormat('@');  // 받는분전화번호
   sh.getRange(start, 7, data.length, 1).setNumberFormat('@');  // 보내는분전화번호
   sh.getRange(start, 1, data.length, HEADERS.length).setValues(data);
+  // '확인필요' 행은 노란 음영으로 눈에 띄게
+  data.forEach(function (row, i) {
+    if (row[8] === '확인필요') sh.getRange(start + i, 1, 1, HEADERS.length).setBackground('#FFF299');
+  });
 }
 
 /** 숫자만 남기고, 앞자리 0 이 사라진 10자리(1로 시작)면 0 을 붙여 11자리로 복원 */
