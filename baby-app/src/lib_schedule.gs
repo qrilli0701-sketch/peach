@@ -33,11 +33,15 @@ function resolveWindow(birthYmd, spec, earliestYmd) {
   return { start: start, end: end };
 }
 
-/** 창 + 오늘 + 완료일 → 상태 */
-function windowStatus(start, end, todayYmd, doneYmd, soonDays) {
+/**
+ * 창 + 오늘 + 완료일 → 상태
+ * @param {boolean} advisory true 면 기한이 아니라 권고다. 지나도 '지남'으로 몰지 않는다
+ *                           (보험 가입 같은 것까지 빨갛게 뜨면 진짜 급한 게 묻힌다)
+ */
+function windowStatus(start, end, todayYmd, doneYmd, soonDays, advisory) {
   if (doneYmd) return ST_DONE;
   var soon = soonDays == null ? 30 : soonDays;
-  if (todayYmd > end) return ST_OVERDUE;
+  if (todayYmd > end) return advisory ? ST_OPEN : ST_OVERDUE;
   if (todayYmd >= start) return ST_OPEN;
   return daysBetween(todayYmd, start) <= soon ? ST_SOON : ST_FUTURE;
 }
@@ -113,10 +117,11 @@ function buildCheckupPlan(child, done, todayYmd) {
     var c = CHECKUP_SCHEDULE[i];
     var key = c.kind + '#' + c.n;
     var w = resolveWindow(child.birthDate, c, null);
+    var totals = { '영유아': 8, '구강': 4 };
     out.push({
       code: c.kind, key: key,
-      name: c.kind === '구강' ? '영유아 구강검진 ' + c.n + '차' : '영유아 건강검진 ' + c.n + '차',
-      dose: c.n, start: w.start, end: w.end,
+      name: c.kind === '구강' ? '영유아 구강검진' : '영유아 건강검진',
+      dose: c.n, totalDoses: totals[c.kind], start: w.start, end: w.end,
       doneDate: done[key] || null,
       status: windowStatus(w.start, w.end, todayYmd, done[key]),
       note: c.note || '', free: true
@@ -135,16 +140,75 @@ function buildAdminPlan(child, done, todayYmd) {
     out.push({
       code: 'admin', key: 'admin#' + a.code, name: a.name, dose: 0,
       start: w.start, end: w.end, doneDate: done['admin#' + a.code] || null,
-      status: windowStatus(w.start, w.end, todayYmd, done['admin#' + a.code]),
-      note: a.note || ''
+      status: windowStatus(w.start, w.end, todayYmd, done['admin#' + a.code], null, a.advisory),
+      advisory: !!a.advisory, note: a.note || ''
     });
   }
   return out;
 }
 
-/** 세 계획을 합쳐 하나의 목록으로 */
+/**
+ * 인플루엔자 — 시즌마다 한 항목. 생애 첫 접종이면 4주 간격 2회.
+ * 지난 시즌은 내보내지 않는다 (지나간 독감 접종은 이제 와서 할 수 없다).
+ */
+function buildFluPlan(child, done, todayYmd) {
+  var r = FLU_RULE;
+  var eligibleFrom = addMonths(child.birthDate, r.minMonths);
+  var out = [];
+
+  // 이번 시즌과 다음 시즌만 본다
+  var year = Number(todayYmd.slice(0, 4));
+  var month = Number(todayYmd.slice(5, 7));
+  var startYear = month < r.seasonEndMonth + 1 ? year - 1 : year;   // 4월까지는 작년 시즌
+
+  for (var s = 0; s < 2; s++) {
+    var y = startYear + s;
+    var seasonStart = y + '-' + pad2_(r.seasonStartMonth) + '-' + pad2_(r.seasonStartDay);
+    var seasonEnd = (y + 1) + '-' + pad2_(r.seasonEndMonth) + '-' + pad2_(r.seasonEndDay);
+    if (seasonEnd < todayYmd) continue;                 // 이미 끝난 시즌
+    if (eligibleFrom > seasonEnd) continue;             // 아직 생후 6개월이 안 됨
+
+    // 생애 첫 접종인가 — "이전 시즌"에 맞은 게 있는지로 판정한다.
+    // 이번 시즌 1차를 방금 맞은 것까지 세면 2차가 사라져 버린다.
+    var priorSeason = false;
+    for (var k in done) {
+      if (k.indexOf(r.code + '#') !== 0) continue;
+      if (Number(k.slice(r.code.length + 1, r.code.length + 5)) < y) { priorSeason = true; break; }
+    }
+
+    var start = eligibleFrom > seasonStart ? eligibleFrom : seasonStart;
+    var ageY = Math.floor(ageMonths(child.birthDate, start) / 12);
+    var twoDoses = !priorSeason && ageY < r.firstTimeUnderAgeYears;
+    var n = twoDoses ? r.firstTimeDoses : 1;
+
+    for (var d = 1; d <= n; d++) {
+      var key = r.code + '#' + y + '-' + d;
+      // 1차가 늦어지면 2차도 그만큼 밀린다 (다른 백신과 같은 규칙)
+      var dStart = start;
+      if (d > 1) {
+        var prevDone = done[r.code + '#' + y + '-' + (d - 1)];
+        dStart = addDays(prevDone || start, r.firstTimeIntervalDays);
+      }
+      var doneYmd = done[key] || null;
+      out.push({
+        code: r.code, key: key, name: r.name + ' (' + y + '-' + (y + 1) + ' 시즌)',
+        dose: d, totalDoses: n, start: dStart, end: seasonEnd,
+        doneDate: doneYmd,
+        status: windowStatus(dStart, seasonEnd, todayYmd, doneYmd),
+        nip: true, annual: true,
+        note: twoDoses ? '생애 첫 접종 — 4주 간격으로 2회' : '매 시즌 1회'
+      });
+    }
+  }
+  return out;
+}
+
+function pad2_(n) { return (n < 10 ? '0' : '') + n; }
+
+/** 네 계획을 합쳐 하나의 목록으로 */
 function buildFullPlan(child, options, done, todayYmd) {
   return buildVaccinePlan(child, options, done, todayYmd)
+    .concat(buildFluPlan(child, done, todayYmd))
     .concat(buildCheckupPlan(child, done, todayYmd))
     .concat(buildAdminPlan(child, done, todayYmd));
 }
@@ -180,6 +244,7 @@ function daysLeft(item, todayYmd) {
 /** "D-12" / "D+3(지남)" */
 function dDayText(item, todayYmd) {
   if (item.doneDate) return '완료 ' + item.doneDate;
+  if (item.advisory) return '기한 없음';
   var n = daysLeft(item, todayYmd);
   if (n == null) return '';
   if (n < 0) return 'D+' + (-n) + ' 지남';
@@ -189,7 +254,7 @@ function dDayText(item, todayYmd) {
 
 /** 마감 임박 경고가 필요한가 (무료 검진을 놓치면 돈이 든다) */
 function needsAlert(item, todayYmd) {
-  if (item.doneDate || !item.end) return false;
+  if (item.doneDate || !item.end || item.advisory) return false;
   if (item.status === ST_OVERDUE) return true;
   return item.status === ST_OPEN && daysLeft(item, todayYmd) <= 21;
 }
@@ -198,7 +263,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     resolveWindow: resolveWindow, windowStatus: windowStatus,
     buildVaccinePlan: buildVaccinePlan, buildCheckupPlan: buildCheckupPlan,
-    buildAdminPlan: buildAdminPlan, buildFullPlan: buildFullPlan,
+    buildAdminPlan: buildAdminPlan, buildFluPlan: buildFluPlan, buildFullPlan: buildFullPlan,
     planDigest: planDigest, daysLeft: daysLeft, dDayText: dDayText, needsAlert: needsAlert,
     ST_DONE: ST_DONE, ST_OVERDUE: ST_OVERDUE, ST_OPEN: ST_OPEN, ST_SOON: ST_SOON,
     ST_FUTURE: ST_FUTURE, STATUS_LABEL: STATUS_LABEL

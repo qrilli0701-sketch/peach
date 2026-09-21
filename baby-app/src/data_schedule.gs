@@ -92,10 +92,6 @@ var VACCINE_SCHEDULE = [
     ]}
   }},
 
-  { code: 'IIV', name: '인플루엔자 (독감)', nip: true, annual: true, doses: [
-    { n: 1, startM: 6, endM: 216, note: '생후 6개월부터 매년 가을. 첫 해는 4주 간격 2회' }
-  ]},
-
   { code: 'Tdap', name: '파상풍·디프테리아·백일해 (Tdap/Td)', nip: true, doses: [
     { n: 1, startM: 132, endM: 155, note: '만 11~12세' }
   ]},
@@ -127,6 +123,21 @@ var CHECKUP_SCHEDULE = [
   { kind: '구강',   n: 4, startM: 54, endM: 65, endPlusD: 30 }
 ];
 
+/**
+ * 인플루엔자 — 매년 반복이라 차수 모델로 표현할 수 없어 따로 둔다.
+ *   시즌     : 9월 ~ 다음해 4월 (어린이 국가예방접종 지원 기간)
+ *   대상     : 생후 6개월부터
+ *   첫 접종  : 만 9세 미만이고 생애 처음이면 4주(28일) 간격으로 2회
+ *   그 이후  : 매 시즌 1회
+ */
+var FLU_RULE = {
+  code: 'IIV', name: '인플루엔자 (독감)',
+  minMonths: 6,
+  seasonStartMonth: 9, seasonStartDay: 1,
+  seasonEndMonth: 4,   seasonEndDay: 30,
+  firstTimeDoses: 2, firstTimeIntervalDays: 28, firstTimeUnderAgeYears: 9
+};
+
 /** 행정 일정 — 기한을 놓치면 돈이나 자리를 잃는 것들 */
 var ADMIN_SCHEDULE = [
   { code: 'birth-report', name: '출생신고', startD: 0, endD: 30,
@@ -137,8 +148,8 @@ var ADMIN_SCHEDULE = [
     note: '60일 이내 신청 시 출생월부터 소급' },
   { code: 'daycare-waitlist', name: '어린이집 입소 대기 등록', startD: 0, endD: 90,
     note: '임신육아종합포털 아이사랑. 대기 순번이 길어 일찍 걸어두는 게 유리' },
-  { code: 'insurance', name: '어린이 보험 가입 검토', startD: 0, endD: 180,
-    note: '가입 전 질병 이력이 생기면 인수에 불리해질 수 있음' }
+  { code: 'insurance', name: '어린이 보험 가입 검토', startD: 0, endD: 365, advisory: true,
+    note: '기한은 없지만, 가입 전 질병 이력이 생기면 인수에 불리해질 수 있음' }
 ];
 
 if (typeof module !== 'undefined' && module.exports) {

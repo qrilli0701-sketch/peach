@@ -185,3 +185,84 @@ test('전체 계획에 중복 key 가 없다', () => {
   const keys = plan.filter(x => x.key).map(x => x.key);
   assert.equal(new Set(keys).size, keys.length);
 });
+
+/* ── 인플루엔자 (시즌 반복) ──────────────────────────── */
+
+const FLU_KID = { birthDate: '2026-03-21', sex: 'male' };   // 생후 6개월 = 2026-09-21
+
+test('독감: 생애 첫 접종은 4주 간격 2회', () => {
+  const p = S.buildFluPlan(FLU_KID, {}, '2026-09-21');
+  const cur = p.filter(x => x.name.indexOf('2026-2027') >= 0);
+  assert.equal(cur.length, 2);
+  assert.equal(cur[0].start, '2026-09-21', '생후 6개월이 시즌 시작보다 늦으면 그날부터');
+  assert.equal(cur[0].end, '2027-04-30');
+  assert.equal(cur[1].start, '2026-10-19');           // +28일
+  assert.match(cur[0].note, /생애 첫 접종/);
+});
+
+test('독감: 생후 6개월 전이면 그 시즌에 안 나온다', () => {
+  const baby = { birthDate: '2026-08-01' };            // 6개월 = 2027-02-01
+  const p = S.buildFluPlan(baby, {}, '2026-09-21');
+  const cur = p.filter(x => x.name.indexOf('2026-2027') >= 0);
+  assert.equal(cur[0].start, '2027-02-01', '시즌 중간이라도 생후 6개월부터');
+});
+
+test('독감: 1차를 맞아도 2차가 사라지지 않는다', () => {
+  // 같은 시즌 1차를 '생애 첫 접종 있음'으로 세어 2차가 없어지던 버그
+  const p = S.buildFluPlan(FLU_KID, { 'IIV#2026-1': '2026-10-05' }, '2026-10-20');
+  const cur = p.filter(x => x.name.indexOf('2026-2027') >= 0);
+  assert.equal(cur.length, 2);
+  assert.equal(cur[0].doneDate, '2026-10-05');
+  assert.equal(cur[1].start, '2026-11-02', '1차 실제 접종일 + 28일');
+});
+
+test('독감: 1차가 늦으면 2차도 밀린다', () => {
+  const p = S.buildFluPlan(FLU_KID, { 'IIV#2026-1': '2026-12-10' }, '2026-12-20');
+  const d2 = p.filter(x => x.name.indexOf('2026-2027') >= 0)[1];
+  assert.equal(d2.start, '2027-01-07');
+});
+
+test('독감: 지난 시즌에 맞았으면 다음부터는 1회', () => {
+  const done = { 'IIV#2026-1': '2026-10-05', 'IIV#2026-2': '2026-11-02' };
+  const p = S.buildFluPlan(FLU_KID, done, '2027-10-01');
+  const cur = p.filter(x => x.name.indexOf('2027-2028') >= 0);
+  assert.equal(cur.length, 1);
+  assert.equal(cur[0].totalDoses, 1);
+  assert.match(cur[0].note, /매 시즌 1회/);
+});
+
+test('독감: 이미 끝난 시즌은 내보내지 않는다', () => {
+  const p = S.buildFluPlan(FLU_KID, {}, '2027-06-01');   // 2026-2027 시즌은 4/30 로 끝남
+  assert.equal(p.filter(x => x.name.indexOf('2026-2027') >= 0).length, 0);
+  assert.ok(p.filter(x => x.name.indexOf('2027-2028') >= 0).length > 0);
+});
+
+test('독감: 1~4월은 작년 시즌으로 친다', () => {
+  const p = S.buildFluPlan(FLU_KID, {}, '2027-02-15');
+  assert.ok(p.some(x => x.name.indexOf('2026-2027') >= 0), '2월이면 아직 이번 시즌');
+});
+
+/* ── 이름·권고 항목 ─────────────────────────────────── */
+
+test('검진 이름에 "차"가 중복되지 않는다', () => {
+  const p = S.buildCheckupPlan(CHILD, {}, '2025-06-01');
+  const c1 = find(p, '영유아#1');
+  assert.equal(c1.name, '영유아 건강검진');      // 화면에서 dose 로 "1/8차" 를 따로 붙인다
+  assert.equal(c1.dose, 1);
+  assert.equal(c1.totalDoses, 8);
+  assert.equal(find(p, '구강#2').name, '영유아 구강검진');
+  assert.equal(find(p, '구강#2').totalDoses, 4);
+  for (const it of p) assert.ok(!/차.*차/.test(it.name), it.name);
+});
+
+test('권고 항목(보험)은 기한이 지나도 빨갛게 뜨지 않는다', () => {
+  const p = S.buildAdminPlan(CHILD, {}, '2026-06-01');    // 1년 넘게 지난 시점
+  const ins = find(p, 'admin#insurance');
+  assert.equal(ins.status, S.ST_OPEN, '권고는 overdue 로 몰지 않는다');
+  assert.equal(ins.advisory, true);
+  assert.equal(S.needsAlert(ins, '2026-06-01'), false);
+  assert.equal(S.dDayText(ins, '2026-06-01'), '기한 없음');
+
+  // 진짜 기한이 있는 것은 여전히 지남으로 뜬다
+  assert.equal(find(p, 'admin#birth-report').status, S.ST_OVERDUE);
+});

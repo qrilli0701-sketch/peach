@@ -3,6 +3,9 @@
  * 계산은 lib_growth.gs / lib_schedule.gs (순수 함수) 에 있고 여기서는 시트 입출력만 한다.
  */
 
+/** 새 식재료를 며칠간 지켜볼지 */
+var FOOD_WATCH_DAYS = 3;
+
 /* ── 조회 헬퍼 ───────────────────────────────────────── */
 
 function children_() {
@@ -129,7 +132,8 @@ var API_ACTIONS = {
                  owner: t['담당'], category: t['분류'] };
       }).sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; }),
       growth: growth,
-      todaySummary: todaySummary_(c.id, ctx.today)
+      todaySummary: todaySummary_(c.id, ctx.today),
+      foodWatch: API_ACTIONS.foodWatch({ childId: c.id }, ctx).watching
     };
   },
 
@@ -165,6 +169,36 @@ var API_ACTIONS = {
       '기관': p.place || '', '기록자': ctx.who, '메모': p.memo || ''
     });
     return { key: p.key, date: date };
+  },
+
+  /**
+   * 지금까지 맞은 것 일괄 입력.
+   * 6개월 아이를 처음 등록하면 이미 지난 항목이 20개가 넘는다.
+   * 하나씩 누르게 하면 아무도 안 쓴다.
+   */
+  scheduleBulkDone: function (p, ctx) {
+    var c = child_(p.childId);
+    var items = p.items || [];
+    if (!items.length) throw new Error('선택된 항목이 없습니다');
+
+    var saved = 0, skipped = [];
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      if (!it.key) continue;
+      var date = String(it.date || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { skipped.push(it.key + ' (날짜 형식)'); continue; }
+      if (daysBetween(c.birthDate, date) < 0) { skipped.push(it.key + ' (생년월일보다 빠름)'); continue; }
+      if (daysBetween(date, ctx.today) < 0) { skipped.push(it.key + ' (미래 날짜)'); continue; }
+
+      deleteWhere('일정완료', { '아이ID': c.id, '항목키': it.key });
+      appendRow('일정완료', {
+        '아이ID': c.id, '항목키': it.key, '완료일': date,
+        '기관': it.place || '', '기록자': ctx.who,
+        '메모': it.approx ? '일괄 입력 (날짜 추정)' : '일괄 입력'
+      });
+      saved++;
+    }
+    return { saved: saved, skipped: skipped };
   },
 
   scheduleUndone: function (p, ctx) {
@@ -333,6 +367,52 @@ var API_ACTIONS = {
     return { rows: rows, summary: todaySummary_(p.childId, ctx.today) };
   },
 
+  /**
+   * 새 식재료 관찰 — 처음 먹인 재료는 3일간 이상반응을 지켜본다.
+   * 나중에 뭐가 문제였는지 역추적하려면 '언제 처음 먹였는지'가 남아 있어야 한다.
+   */
+  foodWatch: function (p, ctx) {
+    var from = addDays(ctx.today, -(FOOD_WATCH_DAYS - 1));
+    var all = readTable('생활기록').filter(function (r) {
+      return String(r['아이ID']) === String(p.childId) && r['유형'] === '이유식';
+    });
+
+    // 재료별 '처음 먹인 날' — 같은 재료를 여러 번 먹여도 관찰 기간은 첫 날부터 센다.
+    // 오래된 것부터 훑어야 가장 이른 날짜가 잡힌다.
+    var firstSeen = {};
+    for (var i = 0; i < all.length; i++) {
+      var r = all[i];
+      var food = String(r['값1'] || '').trim();
+      if (!food || String(r['값2']) !== '신규') continue;
+      var day = String(r['일시']).slice(0, 10);
+      if (!firstSeen[food] || day < firstSeen[food].day) {
+        firstSeen[food] = { day: day, reaction: String(r['상세'] || '') };
+      }
+    }
+
+    var watching = [];
+    for (var food2 in firstSeen) {
+      if (firstSeen[food2].day < from) continue;      // 관찰 기간이 끝났다
+      watching.push({
+        food: food2, startedOn: firstSeen[food2].day,
+        dayNo: daysBetween(firstSeen[food2].day, ctx.today) + 1,
+        totalDays: FOOD_WATCH_DAYS,
+        reaction: firstSeen[food2].reaction
+      });
+    }
+    watching.sort(function (a, b) { return a.startedOn < b.startedOn ? 1 : -1; });
+
+    // 지금까지 도입한 재료 전체 (중복 제거)
+    var introduced = [];
+    var known = {};
+    all.forEach(function (r) {
+      var f = String(r['값1'] || '').trim();
+      if (f && !known[f]) { known[f] = true; introduced.push(f); }
+    });
+
+    return { watching: watching, introduced: introduced, watchDays: FOOD_WATCH_DAYS };
+  },
+
   /* ── 병원 ─────────────────────────────────────────── */
 
   clinicAdd: function (p, ctx) {
@@ -394,7 +474,12 @@ function todaySummary_(childId, today) {
     return n;
   }
 
-  var feed = last('수유') || last('식사');
+  // 유형이 늘어나도 '마지막으로 먹은 것'은 하나로 보여준다
+  var feed = null;
+  for (var f = rows.length - 1; f >= 0 && !feed; f--) {
+    var ty = rows[f]['유형'];
+    if (ty === '수유' || ty === '이유식' || ty === '식사') feed = rows[f];
+  }
   var temp = last('체온');
   var sleepMin = 0;
   rows.forEach(function (r) {

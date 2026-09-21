@@ -190,6 +190,16 @@ function renderToday(){
     h += group('지금 하실 수 있습니다', d.open, 'green');
     h += group('곧 시작됩니다', d.soon, '');
 
+    if(d.foodWatch && d.foodWatch.length){
+      h += '<h2>새 재료 관찰 중 <span class="n">'+d.foodWatch.length+'</span></h2>';
+      d.foodWatch.forEach(function(f){
+        h += '<div class="card row"><span style="font-size:20px">🥣</span>'+
+          '<div class="grow"><div class="title">'+esc(f.food)+'</div>'+
+          '<div class="sub">'+esc(f.startedOn)+' 처음 · '+f.dayNo+'일째 / '+f.totalDays+'일</div></div>'+
+          '<span class="dday'+(f.dayNo>=f.totalDays?' green':'')+'">'+
+          (f.dayNo>=f.totalDays?'관찰 끝':'D+'+(f.dayNo-1))+'</span></div>';
+      });
+    }
     h += '<h2>오늘 <span class="n">'+esc(d.todaySummary.entryCount)+'건 기록</span></h2>';
     h += '<div class="card">' + summaryLine(d.todaySummary) + '</div>';
 
@@ -420,6 +430,15 @@ function renderSched(){
         return '<button class="'+(SFILTER===p[0]?'on':'')+'" onclick="setSF(\''+p[0]+'\')">'+p[1]+'</button>';
       }).join('')+'</div>';
 
+    var past = d.items.filter(function(x){ return !x.doneDate && !x.needsChoice && !x.advisory &&
+                                                  (x.status==='overdue' || x.status==='open'); });
+    if(past.length >= 5){
+      h += '<div class="card"><div class="title">이미 하신 게 있나요?</div>'+
+        '<div class="sub">'+past.length+'개 항목이 기한이 지났거나 진행 중입니다. '+
+        '아기수첩을 보고 한 번에 입력하면 남은 일정이 정확해집니다.</div>'+
+        '<button class="act" style="width:100%;margin-top:10px" onclick="openBulk()">한번에 입력하기</button></div>';
+    }
+
     var items = d.items.filter(function(it){
       if(SFILTER==='todo') return !it.doneDate;
       if(SFILTER==='done') return !!it.doneDate;
@@ -458,8 +477,65 @@ function undo(key){
     .then(function(){ toast('완료를 취소했습니다'); go('sched'); }).catch(function(e){ toast(e.message); });
 }
 
+/* ── 지금까지 한 것 일괄 입력 ─────────────────────────── */
+function openBulk(){
+  busy();
+  call('schedule', { childId: S.childId }).then(function(d){
+    var past = d.items.filter(function(x){ return !x.doneDate && !x.needsChoice && !x.advisory &&
+                                                  (x.status==='overdue' || x.status==='open'); });
+    var h = '<div class="banner info">아기수첩·병원 기록을 보고 <b>이미 한 것만</b> 체크하세요.<br>'+
+      '날짜를 모르면 그대로 두면 됩니다 — 기한 마지막 날로 추정 입력되고 "추정"으로 표시됩니다. '+
+      '다음 차수 계산에 쓰이니 아는 날짜는 정확히 넣는 편이 좋습니다.</div>';
+
+    h += '<div class="card"><label>전부 같은 날 맞았다면 (선택)</label>'+
+      '<div class="row" style="gap:8px"><input id="bulkAll" type="date" style="flex:1">'+
+      '<button class="act ghost" onclick="applyBulkDate()">모두 적용</button></div></div>';
+
+    past.forEach(function(it, i){
+      h += '<div class="card"><label style="display:flex;align-items:center;gap:8px;margin:0 0 8px">'+
+        '<input type="checkbox" class="bulkChk" data-key="'+esc(it.key)+'" data-i="'+i+'" style="width:auto;margin:0">'+
+        '<span class="title">'+esc(it.name)+(it.dose?' '+it.dose+'차':'')+'</span></label>'+
+        '<div class="sub" style="margin-bottom:6px">권장 '+esc(it.start)+' ~ '+esc(it.end)+'</div>'+
+        '<input type="date" class="bulkDate" id="bd'+i+'" value="'+esc(it.end)+'" data-default="'+esc(it.end)+'">'+
+        '</div>';
+    });
+
+    h += '<div class="row" style="gap:8px;margin:14px 0 4px">'+
+      '<button class="act ghost grow" onclick="go(\'sched\')">취소</button>'+
+      '<button class="act grow" onclick="submitBulk()">체크한 것 저장</button></div>';
+    h += footNote();
+    view(h);
+  }).catch(fail);
+}
+
+function applyBulkDate(){
+  var v = $('bulkAll').value;
+  if(!v) return toast('날짜를 고르세요');
+  var boxes = document.querySelectorAll('.bulkChk');
+  for(var i=0;i<boxes.length;i++){
+    if(boxes[i].checked) $('bd'+boxes[i].getAttribute('data-i')).value = v;
+  }
+  toast('체크한 항목에 적용했습니다');
+}
+
+function submitBulk(){
+  var boxes = document.querySelectorAll('.bulkChk'), items = [];
+  for(var i=0;i<boxes.length;i++){
+    if(!boxes[i].checked) continue;
+    var idx = boxes[i].getAttribute('data-i');
+    var el = $('bd'+idx);
+    items.push({ key: boxes[i].getAttribute('data-key'), date: el.value,
+                 approx: el.value === el.getAttribute('data-default') });
+  }
+  if(!items.length) return toast('체크한 항목이 없습니다');
+  call('scheduleBulkDone', { childId: S.childId, items: items }).then(function(r){
+    toast(r.saved + '건 저장했습니다' + (r.skipped.length ? ' ('+r.skipped.length+'건 건너뜀)' : ''));
+    go('sched');
+  }).catch(function(e){ toast(e.message); });
+}
+
 /* ── 기록 ────────────────────────────────────────────── */
-var LOGTYPES = [['수유','🍼'],['식사','🍚'],['수면','😴'],['배변','💩'],['체온','🌡'],['투약','💊']];
+var LOGTYPES = [['수유','🍼'],['이유식','🥣'],['수면','😴'],['배변','💩'],['체온','🌡'],['투약','💊']];
 function renderLog(){
   call('logs', { childId: S.childId, days: 2 }).then(function(d){
     var h = '<div class="quick">'+LOGTYPES.map(function(t){
@@ -497,7 +573,11 @@ function quickLog(type){
   }
   var fields = {
     '수유': '<label>양 / 종류</label><input id="q1" placeholder="예: 160ml 분유">',
-    '식사': '<label>먹은 것</label><input id="q1" placeholder="예: 소고기죽 2/3">',
+    '이유식': '<label>먹은 것 / 재료</label><input id="q1" placeholder="예: 소고기">'+
+            '<label style="display:flex;align-items:center;gap:8px;margin-top:12px">'+
+            '<input type="checkbox" id="qNew" style="width:auto;margin:0"> 처음 먹이는 재료</label>'+
+            '<div class="banner info" style="margin-top:8px">처음 먹이는 재료는 '+
+            '3일간 이상반응을 지켜봅니다. 체크해 두면 홈에서 알려드립니다.</div>',
     '수면': '<div class="grid2"><div><label>잠든 시각</label><input id="q1" type="time"></div>'+
             '<div><label>깬 시각</label><input id="q2" type="time"></div></div>',
     '배변': '<label>상태</label><select id="q1"><option>보통</option><option>묽음</option>'+
@@ -515,9 +595,10 @@ function quickLog(type){
     '<button class="act grow" onclick="submitLog(\''+type+'\')">기록</button></div>');
 }
 function submitLog(type){
-  var q1 = $('q1'), q2 = $('q2'), qd = $('qd');
+  var q1 = $('q1'), q2 = $('q2'), qd = $('qd'), qn = $('qNew');
+  var v2 = qn ? (qn.checked ? '신규' : '') : (q2 ? q2.value : '');
   call('logAdd', { childId: S.childId, type: type,
-                   v1: q1?q1.value:'', v2: q2?q2.value:'', detail: qd?qd.value:'' })
+                   v1: q1?q1.value:'', v2: v2, detail: qd?qd.value:'' })
     .then(function(){ closeDialog(); toast('기록했습니다'); go('log'); })
     .catch(function(e){ toast(e.message); });
 }

@@ -288,3 +288,141 @@ test('캘린더 동기화: 임박한 항목만 넣는다', () => {
   vm.runInContext('syncCalendar();', S);
   assert.equal(S._env.calendarEvents.filter(e => !e._deleted).length, before);
 });
+
+/* ── 일괄 입력 ──────────────────────────────────────── */
+
+test('일괄 입력: 지난 항목을 한 번에 완료 처리', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+
+  const before = api(S, 'dashboard', { childId: id });
+  assert.ok(before.overdue.length >= 10, '6개월 아이는 처음에 지난 항목이 많다');
+
+  const r = api(S, 'scheduleBulkDone', { childId: id, items: [
+    { key: 'BCG#1', date: '2026-03-25' },
+    { key: 'HepB#1', date: '2026-03-21' },
+    { key: 'HepB#2', date: '2026-04-25' },
+    { key: 'DTaP#1', date: '2026-05-25', approx: true },
+    { key: '영유아#1', date: '2026-04-10' }
+  ]});
+  assert.equal(r.saved, 5);
+  assert.equal(r.skipped.length, 0);
+
+  const after = api(S, 'dashboard', { childId: id });
+  assert.equal(after.overdue.length, before.overdue.length - 5);
+
+  const sch = api(S, 'schedule', { childId: id });
+  assert.equal(sch.items.find(x => x.key === 'BCG#1').doneDate, '2026-03-25');
+  // 추정 입력은 메모로 구분된다
+  const rows = vm.runInContext("readTable('일정완료')", S);
+  assert.equal(rows.find(x => x['항목키'] === 'DTaP#1')['메모'], '일괄 입력 (날짜 추정)');
+  assert.equal(rows.find(x => x['항목키'] === 'BCG#1')['메모'], '일괄 입력');
+});
+
+test('일괄 입력: 잘못된 날짜는 건너뛰고 나머지는 저장한다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  const r = api(S, 'scheduleBulkDone', { childId: id, items: [
+    { key: 'BCG#1', date: '2026-03-25' },
+    { key: 'HepB#1', date: '2026-01-01' },      // 생년월일보다 빠름
+    { key: 'HepB#2', date: '2027-01-01' },      // 미래
+    { key: 'DTaP#1', date: '엉터리' }
+  ]});
+  assert.equal(r.saved, 1);
+  assert.equal(r.skipped.length, 3);
+  assert.ok(r.skipped.some(x => /생년월일/.test(x)));
+  assert.ok(r.skipped.some(x => /미래/.test(x)));
+  assert.throws(() => api(S, 'scheduleBulkDone', { childId: id, items: [] }), /선택된 항목이 없습니다/);
+});
+
+test('일괄 입력 후 다음 차수 창이 실제 접종일 기준으로 다시 잡힌다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'scheduleBulkDone', { childId: id, items: [{ key: 'DTaP#2', date: '2026-09-10' }] });
+  const d3 = api(S, 'schedule', { childId: id }).items.find(x => x.key === 'DTaP#3');
+  assert.equal(d3.start, '2026-10-08', '2차 실제 접종일 + 28일');
+  assert.equal(d3.shifted, true);
+});
+
+/* ── 이유식 / 알레르기 관찰 ─────────────────────────── */
+
+test('새 재료는 3일간 관찰 목록에 남는다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '소고기', v2: '신규', at: '2026-09-20 12:00' });
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '단호박', v2: '신규', at: '2026-09-15 12:00' });
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '쌀미음', v2: '', at: '2026-09-21 08:00' });
+
+  const w = api(S, 'foodWatch', { childId: id });
+  assert.equal(w.watching.length, 1, '5일 전에 도입한 단호박은 관찰 기간이 끝났다');
+  assert.equal(w.watching[0].food, '소고기');
+  assert.equal(w.watching[0].dayNo, 2);
+  assert.equal(w.watching[0].totalDays, 3);
+
+  // 지금까지 먹인 재료는 전부 남는다
+  assert.deepEqual(w.introduced.sort(), ['단호박', '소고기', '쌀미음']);
+
+  // 홈 화면에도 실려 나간다
+  assert.equal(api(S, 'dashboard', { childId: id }).foodWatch.length, 1);
+});
+
+test('같은 재료를 여러 번 먹여도 관찰은 처음 한 번만', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '소고기', v2: '신규', at: '2026-09-20 12:00' });
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '소고기', v2: '신규', at: '2026-09-21 12:00' });
+  const w = api(S, 'foodWatch', { childId: id });
+  assert.equal(w.watching.length, 1);
+  assert.equal(w.watching[0].startedOn, '2026-09-20', '가장 이른 도입일을 기준으로 센다');
+});
+
+test('이유식도 "마지막으로 먹은 것"에 잡힌다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'logAdd', { childId: id, type: '수유', v1: '160ml', at: '2026-09-21 09:00' });
+  api(S, 'logAdd', { childId: id, type: '이유식', v1: '소고기죽', at: '2026-09-21 12:00' });
+  const s = api(S, 'logs', { childId: id, days: 1 }).summary;
+  assert.equal(s.lastFeed.at, '12:00');
+  assert.equal(s.lastFeed.detail, '소고기죽');
+});
+
+/* ── 실제 아이 기준 손검증 ──────────────────────────── */
+
+test('2026-03-21생 남아, 2026-09-21 시점의 일정이 맞다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'vaccineChoice', { childId: id, series: 'rota', choice: 'RV5' });
+
+  const d = api(S, 'dashboard', { childId: id });
+  assert.equal(d.child.ageLabel, '생후 6개월 0일');
+  assert.equal(d.child.ageMonths, 6);
+
+  const byKey = {};
+  api(S, 'schedule', { childId: id }).items.forEach(x => { byKey[x.key] = x; });
+
+  // 생후 6개월에 열리는 3차들
+  for (const k of ['DTaP#3', 'Hib#3', 'PCV#3', 'HepB#3', 'IPV#3', 'RV#3']) {
+    assert.equal(byKey[k].status, 'open', `${k} 는 지금 가능해야 한다`);
+    assert.equal(byKey[k].start, '2026-09-21', `${k} 창 시작`);
+  }
+  // 2차 영유아검진은 4개월0일~6개월30일 → 10/21 마감
+  assert.equal(byKey['영유아#2'].end, '2026-10-21');
+  assert.equal(byKey['영유아#2'].status, 'open');
+  assert.equal(byKey['영유아#2'].dday, 'D-30');
+  assert.equal(byKey['영유아#2'].alert, false, '아직 30일 남아 경고는 이르다');
+
+  // 3주 안으로 들어오면 경고가 켜진다
+  const later = boot({ now: '2026-10-05' });
+  const id2 = api(later, 'childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  const c2 = api(later, 'schedule', { childId: id2 }).items.find(x => x.key === '영유아#2');
+  assert.equal(c2.dday, 'D-16');
+  assert.equal(c2.alert, true, '마감 3주 내면 경고');
+
+  // 독감: 9월이고 생후 6개월 → 이번 시즌 첫 접종 2회
+  const flu = api(S, 'schedule', { childId: id }).items.filter(x => x.code === 'IIV');
+  assert.equal(flu.filter(x => x.status === 'open' || x.status === 'soon').length, 2);
+
+  // 로타는 생후 8개월 전에 끝내야 한다 — 3차 창이 그 전에 닫히는지
+  assert.ok(byKey['RV#3'].end <= '2026-11-21', '생후 8개월(2026-11-21) 이전이어야 한다');
+});
