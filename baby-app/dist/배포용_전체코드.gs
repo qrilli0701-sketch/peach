@@ -2,7 +2,7 @@
  * 우리 아이 — 아이 관리 웹앱 (배포용 단일 파일)
  *
  * 자동 생성 파일입니다. 고칠 때는 baby-app/src/ 를 고치고 `npm run bundle` 하세요.
- * 원본 9개 파일: data_lms.gs, data_schedule.gs, lib_growth.gs, lib_schedule.gs, Setup.gs, Store.gs, Code.gs, Api.gs, Triggers.gs
+ * 원본 10개 파일: data_lms.gs, data_schedule.gs, lib_growth.gs, lib_schedule.gs, lib_visit.gs, Setup.gs, Store.gs, Code.gs, Api.gs, Triggers.gs
  *
  * ┌─ 붙여넣은 뒤 할 일 ──────────────────────────────────────────────┐
  * │ 1. 아래 SPREADSHEET_ID 를 본인 스프레드시트 ID 로 바꾸기           │
@@ -126,12 +126,12 @@ var VACCINE_SCHEDULE = [
     ]}
   }},
 
-  { code: 'MMR', name: '홍역·유행성이하선염·풍진 (MMR)', nip: true, doses: [
+  { code: 'MMR', name: '홍역·유행성이하선염·풍진 (MMR)', nip: true, live: true, doses: [
     { n: 1, startM: 12, endM: 15 },
     { n: 2, startM: 48, endM: 72, minPrevD: 28, note: '만 4~6세' }
   ]},
 
-  { code: 'VAR', name: '수두', nip: true, doses: [
+  { code: 'VAR', name: '수두', nip: true, live: true, doses: [
     { n: 1, startM: 12, endM: 15 }
   ]},
 
@@ -148,7 +148,7 @@ var VACCINE_SCHEDULE = [
       { n: 4, startM: 72, endM: 83, note: '만 6세' },
       { n: 5, startM: 144, endM: 155, note: '만 12세' }
     ]},
-    'LJEV': { label: '약독화 생백신 (2회)', doses: [
+    'LJEV': { label: '약독화 생백신 (2회)', live: true, doses: [
       { n: 1, startM: 12, endM: 23 },
       { n: 2, startM: 24, endM: 35, minPrevD: 335, note: '1차 후 12개월' }
     ]}
@@ -184,6 +184,12 @@ var CHECKUP_SCHEDULE = [
   { kind: '구강',   n: 3, startM: 42, endM: 53, endPlusD: 30 },
   { kind: '구강',   n: 4, startM: 54, endM: 65, endPlusD: 30 }
 ];
+
+/**
+ * 주사용 생백신은 같은 날 함께 맞거나, 아니면 4주(28일) 간격을 둬야 한다.
+ * 경구용(로타)은 해당 없음. 방문을 묶을 때 이 규칙을 지켜야 한다.
+ */
+var LIVE_VACCINE_MIN_GAP_DAYS = 28;
 
 /**
  * 인플루엔자 — 매년 반복이라 차수 모델로 표현할 수 없어 따로 둔다.
@@ -594,6 +600,8 @@ function buildVaccinePlan(child, options, done, todayYmd) {
         doneDate: doneYmd,
         status: windowStatus(w.start, w.end, todayYmd, doneYmd),
         nip: !!v.nip, annual: !!v.annual, note: spec.note || '',
+        live: !!(v.live || (v.variants && variantKey && v.variants[variantKey].live)),
+        minPrevD: spec.minPrevD || 0,
         shifted: !!(earliest && earliest > (spec.startD != null
                     ? addDays(child.birthDate, spec.startD)
                     : addMonths(child.birthDate, spec.startM || 0)))
@@ -693,6 +701,7 @@ function buildFluPlan(child, done, todayYmd) {
         doneDate: doneYmd,
         status: windowStatus(dStart, seasonEnd, todayYmd, doneYmd),
         nip: true, annual: true,
+        minPrevD: d > 1 ? r.firstTimeIntervalDays : 0,
         note: twoDoses ? '생애 첫 접종 — 4주 간격으로 2회' : '매 시즌 1회'
       });
     }
@@ -754,6 +763,285 @@ function needsAlert(item, todayYmd) {
   if (item.doneDate || !item.end || item.advisory) return false;
   if (item.status === ST_OVERDUE) return true;
   return item.status === ST_OPEN && daysLeft(item, todayYmd) <= 21;
+}
+
+
+//==========================================================================
+// lib_visit.gs
+//==========================================================================
+
+/**
+ * 방문 묶기 — 이 앱이 존재하는 이유.
+ *
+ * 접종·검진은 각각 "언제부터 언제까지" 창이 있고, 그 창들은 서로 겹친다.
+ * 할 일을 목록으로 늘어놓으면 부모가 직접 겹치는 날을 찾아내야 한다.
+ * 여기서는 반대로 한다 — 창이 가장 많이 겹치는 날을 찾아
+ * "이 날 병원 한 번 가면 6개가 끝납니다" 로 바꾼다.
+ *
+ * 지키는 규칙
+ *   1. 창을 벗어난 날에는 배정하지 않는다 (start <= 방문일 <= end)
+ *   2. 주사용 생백신(MMR·수두·일본뇌염 생백신)은 같은 날 함께 맞거나 4주 간격
+ *   3. 일요일은 피한다 (문 연 소아과가 드물다)
+ *   4. 마감이 급한 것을 먼저 챙긴다
+ *
+ * 순수 함수만 — lib_growth.gs 의 날짜 함수에 의존한다.
+ */
+
+var VISIT_HORIZON_DAYS = 150;   // 이 앞까지만 계획을 세운다
+var VISIT_MAX = 4;              // 너무 많으면 계획이 아니라 목록이 된다
+
+/**
+ * 묶으려고 미룰 수 있는 최대 일수.
+ * 방문 수만 줄이려 들면 독감 2차가 유행 정점 뒤로 밀리는 식이 된다.
+ * 창이 아무리 길어도 열린 지 이만큼 지나면 따로라도 간다.
+ */
+var VISIT_MAX_DELAY_DAYS = 42;
+var WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 'yyyy-MM-dd' → 0(일) ~ 6(토) */
+function weekdayOf(ymd) {
+  return new Date(ymdToUtc(ymd)).getUTCDay();
+}
+
+function weekdayLabel(ymd) {
+  return WEEKDAY_KO[weekdayOf(ymd)];
+}
+
+/** 방문 묶기 대상인가 — 완료·선택대기·권고 항목은 병원에 갈 일이 아니다 */
+function isVisitable_(it) {
+  return !it.doneDate && !it.needsChoice && !it.advisory && !!it.start && !!it.end;
+}
+
+/**
+ * 방문 계획 세우기.
+ * @param {Array} plan buildFullPlan() 결과
+ * @param {string} todayYmd
+ * @param {{horizonDays:number, maxVisits:number}} opts
+ * @return {{visits:Array, later:Array, unschedulable:Array}}
+ *   visits[i] = { date, weekday, items:[], liveCount, earliestDeadline, overdueCount }
+ */
+function planVisits(plan, todayYmd, opts) {
+  opts = opts || {};
+  var horizon = addDays(todayYmd, opts.horizonDays || VISIT_HORIZON_DAYS);
+  var maxVisits = opts.maxVisits || VISIT_MAX;
+
+  var pending = [], later = [];
+  for (var i = 0; i < plan.length; i++) {
+    var it = plan[i];
+    if (!isVisitable_(it)) continue;
+    if (it.start > horizon) { later.push(it); continue; }
+    pending.push(it);
+  }
+
+  // 같은 백신의 앞 차수를 어느 방문에 넣었는지 — 뒤 차수는 그만큼 밀어야 한다
+  var placed = {};
+
+  // 항목별 '이 날짜를 넘겨서까지 묶지는 않는다' 선
+  var limit = {};
+  for (var q = 0; q < pending.length; q++) {
+    limit[pending[q].key] = batchDeadline_(pending[q], todayYmd, opts.maxDelayDays);
+  }
+
+  var visits = [];
+  var guard = 0;
+  while (pending.length && visits.length < maxVisits && guard++ < 50) {
+    var pick = bestDate_(pending, todayYmd, horizon, visits, placed, limit);
+    if (!pick) break;
+
+    var taken = [], rest = [], usedCodes = {};
+    // 마감이 급한 것부터 자리를 잡는다 (한 방문에 같은 백신은 한 번만 들어간다)
+    var order = pending.slice().sort(function (a, b) {
+      return a.end < b.end ? -1 : a.end > b.end ? 1 : (a.dose || 0) - (b.dose || 0);
+    });
+    for (var j = 0; j < order.length; j++) {
+      var p = order[j];
+      if (fitsOn_(p, pick.date, visits, placed, usedCodes, limit)) {
+        if (p.code) usedCodes[p.code] = true;
+        taken.push(p);
+      } else {
+        rest.push(p);
+      }
+    }
+    if (!taken.length) break;
+
+    for (var t = 0; t < taken.length; t++) {
+      if (taken[t].code) placed[taken[t].code] = pick.date;
+    }
+    // 앞 차수를 잡았으면 뒤 차수의 '너무 미루지 않기' 선도 그 시점부터 다시 센다
+    for (var u = 0; u < rest.length; u++) {
+      var nxt = rest[u], prevDate = placed[nxt.code];
+      if (!prevDate || !nxt.minPrevD) continue;
+      var earliest = addDays(prevDate, nxt.minPrevD);
+      var anchor = earliest > todayYmd ? earliest : todayYmd;
+      var capped = addDays(anchor, opts.maxDelayDays == null ? VISIT_MAX_DELAY_DAYS : opts.maxDelayDays);
+      limit[nxt.key] = capped < nxt.end ? capped : nxt.end;
+      if (nxt.start < earliest) nxt.start = earliest;
+    }
+    visits.push(makeVisit_(pick.date, taken));
+    pending = rest;
+  }
+
+  visits.sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+  return { visits: visits, later: later, unschedulable: pending };
+}
+
+/**
+ * 묶기 목적의 '실질 마감' — 실제 마감과 '너무 미루지 않기' 상한 중 이른 쪽.
+ * 기준점은 창 시작일이되, 이미 지난 창이면 오늘부터 센다.
+ */
+function batchDeadline_(item, todayYmd, maxDelay) {
+  var anchor = item.start > todayYmd ? item.start : todayYmd;
+  var capped = addDays(anchor, maxDelay == null ? VISIT_MAX_DELAY_DAYS : maxDelay);
+  return capped < item.end ? capped : item.end;
+}
+
+/**
+ * 이 항목을 이 날짜에 넣을 수 있는가.
+ *   - 창 안이어야 한다
+ *   - 한 방문에 같은 백신 두 차수를 넣을 수 없다
+ *   - 같은 백신의 앞 차수를 이미 배정했다면 최소간격을 지켜야 한다
+ *   - 주사용 생백신은 다른 생백신 방문과 4주 이상 떨어져야 한다
+ */
+function fitsOn_(item, date, visits, placed, usedCodes, limit) {
+  if (item.start > date || date > item.end) return false;
+  if (limit && date > limit[item.key]) return false;
+  if (usedCodes && item.code && usedCodes[item.code]) return false;
+  var prev = placed && placed[item.code];
+  if (prev && item.minPrevD && daysBetween(prev, date) < item.minPrevD) return false;
+  if (item.live && !liveOk_(date, visits)) return false;
+  return true;
+}
+
+/** 이 날짜에 생백신을 넣어도 기존 방문들과 4주 규칙을 어기지 않는가 */
+function liveOk_(date, visits) {
+  for (var i = 0; i < visits.length; i++) {
+    if (!visits[i].liveCount) continue;
+    var gap = Math.abs(daysBetween(visits[i].date, date));
+    if (gap !== 0 && gap < LIVE_VACCINE_MIN_GAP_DAYS) return false;
+  }
+  return true;
+}
+
+/**
+ * 가장 많은 항목을 덮는 날짜를 고른다.
+ * 후보는 각 항목의 창 시작일(과 오늘) — 그 사이 날짜를 고를 이유가 없다.
+ */
+function bestDate_(pending, todayYmd, horizon, visits, placed, limit) {
+  var seen = {}, candidates = [];
+  function add(d) {
+    if (!d || d < todayYmd || d > horizon || seen[d]) return;
+    seen[d] = true; candidates.push(d);
+  }
+  add(todayYmd);
+  for (var i = 0; i < pending.length; i++) {
+    add(pending[i].start);
+    var prev = placed && placed[pending[i].code];
+    if (prev && pending[i].minPrevD) add(addDays(prev, pending[i].minPrevD));
+  }
+
+  var best = null;
+  for (var c = 0; c < candidates.length; c++) {
+    var d = shiftOffSunday_(candidates[c], pending);
+    if (!d || seen['@' + d]) continue;
+    seen['@' + d] = true;
+
+    var count = 0, earliestEnd = null, overdue = 0, used = {};
+    var byEnd = pending.slice().sort(function (a, b) {
+      return a.end < b.end ? -1 : a.end > b.end ? 1 : (a.dose || 0) - (b.dose || 0);
+    });
+    for (var k = 0; k < byEnd.length; k++) {
+      var p = byEnd[k];
+      if (!fitsOn_(p, d, visits, placed, used, limit)) continue;
+      if (p.code) used[p.code] = true;
+      count++;
+      if (p.status === ST_OVERDUE) overdue++;
+      if (earliestEnd == null || p.end < earliestEnd) earliestEnd = p.end;
+    }
+    if (!count) continue;
+
+    var cand = { date: d, count: count, overdue: overdue, earliestEnd: earliestEnd };
+    if (!best || betterThan_(cand, best)) best = cand;
+  }
+  return best;
+}
+
+/**
+ * 더 좋은 후보인가.
+ * 마감이 지난 걸 많이 처리하는 날 > 한 번에 많이 끝나는 날 > 이른 날
+ */
+function betterThan_(a, b) {
+  if (a.overdue !== b.overdue) return a.overdue > b.overdue;
+  if (a.count !== b.count) return a.count > b.count;
+  return a.date < b.date;
+}
+
+/** 일요일이면 월요일로 민다. 단 그러다 창을 벗어나는 항목이 생기면 그냥 둔다. */
+function shiftOffSunday_(date, pending) {
+  if (weekdayOf(date) !== 0) return date;
+  var next = addDays(date, 1);
+  var coveredBefore = 0, coveredAfter = 0;
+  for (var i = 0; i < pending.length; i++) {
+    var p = pending[i];
+    if (p.start <= date && date <= p.end) coveredBefore++;
+    if (p.start <= next && next <= p.end) coveredAfter++;
+  }
+  return coveredAfter >= coveredBefore ? next : date;
+}
+
+function makeVisit_(date, items) {
+  items.sort(function (a, b) { return a.end < b.end ? -1 : a.end > b.end ? 1 : 0; });
+  var live = 0, overdue = 0;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].live) live++;
+    if (items[i].status === ST_OVERDUE) overdue++;
+  }
+  return {
+    date: date, weekday: weekdayLabel(date), items: items,
+    liveCount: live, overdueCount: overdue,
+    earliestDeadline: items.length ? items[0].end : null
+  };
+}
+
+/* ── 사람 말로 ───────────────────────────────────────── */
+
+/** "10월 5일 (월)" */
+function visitDateLabel(ymd) {
+  var m = /^\d{4}-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return ymd;
+  return Number(m[1]) + '월 ' + Number(m[2]) + '일 (' + weekdayLabel(ymd) + ')';
+}
+
+/** 방문 한 건을 한 줄로 요약 */
+function visitSummary(visit, todayYmd) {
+  var n = visit.items.length;
+  var when = daysBetween(todayYmd, visit.date);
+  var head = when <= 0 ? '오늘 가시면' : when === 1 ? '내일 가시면' : when + '일 뒤에 가시면';
+  return head + ' ' + n + '개가 끝납니다';
+}
+
+/**
+ * 왜 이 날인지 한 줄로. 부모가 납득해야 움직인다.
+ */
+function visitReason(visit, todayYmd) {
+  if (visit.overdueCount) {
+    return '이미 기한이 지난 ' + visit.overdueCount + '개가 들어 있습니다';
+  }
+  // 여유는 '오늘'이 아니라 '그 날 가면 얼마나 아슬아슬한지'로 재야 한다
+  var slack = daysBetween(visit.date, visit.earliestDeadline);
+  var first = visit.items[0];
+  var name = first.name + (first.dose ? ' ' + first.dose + '차' : '');
+  if (slack <= 7) return name + ' 마감(' + visit.earliestDeadline + ') 직전입니다';
+  if (slack <= 30) return name + ' 마감까지 ' + slack + '일 남은 시점입니다';
+  return '이 날이면 ' + visit.items.length + '개 창이 한꺼번에 열려 있습니다';
+}
+
+/** 캘린더·메일에 넣을 제목 */
+function visitTitle(visit, childName) {
+  var names = visit.items.map(function (it) {
+    return it.name.replace(/\s*\([^)]*\)\s*$/, '') + (it.dose ? ' ' + it.dose + '차' : '');
+  });
+  return '[' + childName + '] 소아과 — ' + names.slice(0, 3).join(', ') +
+         (names.length > 3 ? ' 외 ' + (names.length - 3) + '건' : '');
 }
 
 
@@ -1247,9 +1535,7 @@ var API_ACTIONS = {
         return { id: t['할일ID'], title: t['제목'], due: String(t['기한'] || '').trim(),
                  owner: t['담당'], category: t['분류'] };
       }).sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; }),
-      growth: growth,
-      todaySummary: todaySummary_(c.id, ctx.today),
-      foodWatch: API_ACTIONS.foodWatch({ childId: c.id }, ctx).watching
+      growth: growth
     };
   },
 
@@ -1344,6 +1630,70 @@ var API_ACTIONS = {
     patch[col] = choice;
     updateRow('아이', '아이ID', c.id, patch);
     return { series: p.series, choice: choice };
+  },
+
+  /**
+   * 다음 병원 방문 계획 — 이 앱의 핵심.
+   * 할 일 목록 대신 "언제 한 번 가면 몇 개가 끝나는지"를 돌려준다.
+   */
+  visits: function (p, ctx) {
+    var c = child_(p.childId);
+    var plan = buildFullPlan(c, c.options, doneMap_(c.id), ctx.today);
+    var r = planVisits(plan, ctx.today);
+
+    return {
+      visits: r.visits.map(function (v) {
+        return {
+          date: v.date, dateLabel: visitDateLabel(v.date), weekday: v.weekday,
+          summary: visitSummary(v, ctx.today), reason: visitReason(v, ctx.today),
+          daysAway: daysBetween(ctx.today, v.date),
+          overdueCount: v.overdueCount, earliestDeadline: v.earliestDeadline,
+          title: visitTitle(v, c.name),
+          items: v.items.map(function (it) {
+            return { key: it.key, name: it.name, dose: it.dose, totalDoses: it.totalDoses,
+                     end: it.end, status: it.status, free: it.code === '영유아' || it.code === '구강' };
+          })
+        };
+      }),
+      laterCount: r.later.length
+    };
+  },
+
+  /** 방문 한 건을 통째로 완료 처리 — 병원 다녀와서 한 번만 누르면 된다 */
+  visitDone: function (p, ctx) {
+    var c = child_(p.childId);
+    var date = p.date || ctx.today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('날짜 형식은 yyyy-MM-dd');
+    if (daysBetween(c.birthDate, date) < 0) throw new Error('생년월일보다 빠른 날짜입니다');
+    var keys = p.keys || [];
+    if (!keys.length) throw new Error('완료할 항목이 없습니다');
+
+    for (var i = 0; i < keys.length; i++) {
+      deleteWhere('일정완료', { '아이ID': c.id, '항목키': keys[i] });
+      appendRow('일정완료', {
+        '아이ID': c.id, '항목키': keys[i], '완료일': date,
+        '기관': p.place || '', '기록자': ctx.who, '메모': '방문 일괄 완료'
+      });
+    }
+    return { saved: keys.length, date: date };
+  },
+
+  /**
+   * 방문을 캘린더에 넣는다. 웹앱이 '접속한 사용자'로 실행되므로
+   * 누르는 사람 본인 캘린더에 들어간다 — 부부가 각자 알림을 받는다.
+   */
+  visitCalendar: function (p, ctx) {
+    var c = child_(p.childId);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || ''))) throw new Error('날짜가 올바르지 않습니다');
+    var cal = CalendarApp.getDefaultCalendar();
+    if (!cal) throw new Error('캘린더를 찾을 수 없습니다');
+
+    var title = p.title || ('[' + c.name + '] 소아과');
+    var ev = cal.createAllDayEvent(title, new Date(ymdToUtc(p.date)), {
+      description: (p.detail || '') + '\n\n참고용입니다. 확인: nip.kdca.go.kr'
+    });
+    ev.setTag('babyapp', '1');
+    return { date: p.date, title: title };
   },
 
   /* ── 성장 ─────────────────────────────────────────── */
@@ -1677,6 +2027,25 @@ function weeklyDigest() {
 
     var html = '<h2 style="margin:24px 0 8px">' + esc_(c.name) + ' · ' +
                esc_(ageLabel(c.birthDate, today)) + '</h2>';
+    // 목록보다 '언제 한 번 가면 되는지'가 먼저다
+    var vp = planVisits(plan, today);
+    if (vp.visits.length) {
+      var v = vp.visits[0];
+      html += '<div style="background:#f1f3f4;border-radius:10px;padding:14px 16px;margin:8px 0 16px">' +
+        '<div style="font-size:13px;color:#5f6368">다음 병원 방문</div>' +
+        '<div style="font-size:24px;font-weight:bold;margin:2px 0 6px">' +
+          esc_(visitDateLabel(v.date)) + '</div>' +
+        '<div style="font-size:15px;font-weight:bold;color:' +
+          (v.overdueCount ? '#c5221f' : '#1a73e8') + '">' + esc_(visitSummary(v, today)) + '</div>' +
+        '<div style="font-size:13px;color:#5f6368;margin-top:4px">' +
+          esc_(visitReason(v, today)) + '</div>' +
+        '<div style="font-size:13px;color:#3c4043;margin-top:10px">' +
+          esc_(v.items.map(function (it) {
+            return it.name.replace(/\s*\([^)]*\)/g, '') + (it.dose ? ' ' + it.dose + '차' : '');
+          }).join(' · ')) + '</div>' +
+        '</div>';
+    }
+
     html += section_('지났습니다', g.overdue, today, '#c5221f');
     html += section_('지금 하실 수 있습니다', g.open, today, '#188038');
     html += section_('2주 안에 시작됩니다', g.soon, today, '#5f6368');

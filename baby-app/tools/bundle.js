@@ -16,7 +16,7 @@ const DIST = path.join(__dirname, '..', 'dist');
 // 데이터 → 계산 → 시트 → 앱 순
 const ORDER = [
   'data_lms.gs', 'data_schedule.gs',
-  'lib_growth.gs', 'lib_schedule.gs',
+  'lib_growth.gs', 'lib_schedule.gs', 'lib_visit.gs',
   'Setup.gs', 'Store.gs', 'Code.gs', 'Api.gs', 'Triggers.gs'
 ];
 

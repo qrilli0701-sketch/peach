@@ -28,10 +28,10 @@ test('번들이 src 와 같은 내용이다 (npm run bundle 을 깜빡하지 않
     'src/Page.html 을 고쳤습니다 — npm run bundle 을 실행하세요');
 });
 
-test('번들에 원본 9개 파일이 모두 들어 있다', () => {
+test('src 의 .gs 파일이 하나도 빠짐없이 번들에 들어 있다', () => {
   const code = fs.readFileSync(BUNDLE, 'utf8');
   const srcFiles = fs.readdirSync(path.join(ROOT, 'src')).filter(f => f.endsWith('.gs'));
-  assert.equal(srcFiles.length, 9);
+  assert.ok(srcFiles.length >= 9, '파일이 너무 적습니다: ' + srcFiles.length);
   for (const f of srcFiles) assert.ok(code.includes('// ' + f), `${f} 가 번들에 없음`);
 });
 
@@ -67,14 +67,18 @@ test('번들 한 파일만으로 전체 흐름이 돈다', () => {
   const id = ok('childSave', { name: '아기', birthDate: '2026-03-21', sexLabel: '남' }).id;
   ok('vaccineChoice', { childId: id, series: 'rota', choice: 'RV5' });
   ok('growthAdd', { childId: id, date: '2026-09-21', heightCm: 68.5, weightKg: 8.1, headCm: 44.2 });
-  ok('logAdd', { childId: id, type: '이유식', v1: '소고기', v2: '신규' });
   ok('scheduleBulkDone', { childId: id, items: [{ key: 'BCG#1', date: '2026-03-25' }] });
 
   const d = ok('dashboard', { childId: id });
   assert.equal(d.child.ageLabel, '생후 6개월 0일');
   assert.ok(d.growth.metrics.wfa.percentile > 0 && d.growth.metrics.wfa.percentile < 100);
-  assert.equal(d.foodWatch.length, 1);
   assert.ok(d.open.some(x => x.key === 'DTaP#3'));
+
+  // 방문 묶기가 번들 안에서도 돈다 (이 앱의 핵심)
+  const v = ok('visits', { childId: id });
+  assert.ok(v.visits.length >= 1);
+  assert.ok(v.visits[0].items.length >= 5, '한 번에 여러 개가 묶여야 한다');
+  assert.match(v.visits[0].summary, /개가 끝납니다/);
 
   const ch = ok('growthChart', { childId: id, indicator: 'wfa' });
   assert.equal(ch.bands.length, 5);

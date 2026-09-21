@@ -48,6 +48,25 @@ function weeklyDigest() {
 
     var html = '<h2 style="margin:24px 0 8px">' + esc_(c.name) + ' · ' +
                esc_(ageLabel(c.birthDate, today)) + '</h2>';
+    // 목록보다 '언제 한 번 가면 되는지'가 먼저다
+    var vp = planVisits(plan, today);
+    if (vp.visits.length) {
+      var v = vp.visits[0];
+      html += '<div style="background:#f1f3f4;border-radius:10px;padding:14px 16px;margin:8px 0 16px">' +
+        '<div style="font-size:13px;color:#5f6368">다음 병원 방문</div>' +
+        '<div style="font-size:24px;font-weight:bold;margin:2px 0 6px">' +
+          esc_(visitDateLabel(v.date)) + '</div>' +
+        '<div style="font-size:15px;font-weight:bold;color:' +
+          (v.overdueCount ? '#c5221f' : '#1a73e8') + '">' + esc_(visitSummary(v, today)) + '</div>' +
+        '<div style="font-size:13px;color:#5f6368;margin-top:4px">' +
+          esc_(visitReason(v, today)) + '</div>' +
+        '<div style="font-size:13px;color:#3c4043;margin-top:10px">' +
+          esc_(v.items.map(function (it) {
+            return it.name.replace(/\s*\([^)]*\)/g, '') + (it.dose ? ' ' + it.dose + '차' : '');
+          }).join(' · ')) + '</div>' +
+        '</div>';
+    }
+
     html += section_('지났습니다', g.overdue, today, '#c5221f');
     html += section_('지금 하실 수 있습니다', g.open, today, '#188038');
     html += section_('2주 안에 시작됩니다', g.soon, today, '#5f6368');

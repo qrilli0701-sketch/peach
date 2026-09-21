@@ -64,12 +64,12 @@ var VACCINE_SCHEDULE = [
     ]}
   }},
 
-  { code: 'MMR', name: '홍역·유행성이하선염·풍진 (MMR)', nip: true, doses: [
+  { code: 'MMR', name: '홍역·유행성이하선염·풍진 (MMR)', nip: true, live: true, doses: [
     { n: 1, startM: 12, endM: 15 },
     { n: 2, startM: 48, endM: 72, minPrevD: 28, note: '만 4~6세' }
   ]},
 
-  { code: 'VAR', name: '수두', nip: true, doses: [
+  { code: 'VAR', name: '수두', nip: true, live: true, doses: [
     { n: 1, startM: 12, endM: 15 }
   ]},
 
@@ -86,7 +86,7 @@ var VACCINE_SCHEDULE = [
       { n: 4, startM: 72, endM: 83, note: '만 6세' },
       { n: 5, startM: 144, endM: 155, note: '만 12세' }
     ]},
-    'LJEV': { label: '약독화 생백신 (2회)', doses: [
+    'LJEV': { label: '약독화 생백신 (2회)', live: true, doses: [
       { n: 1, startM: 12, endM: 23 },
       { n: 2, startM: 24, endM: 35, minPrevD: 335, note: '1차 후 12개월' }
     ]}
@@ -122,6 +122,12 @@ var CHECKUP_SCHEDULE = [
   { kind: '구강',   n: 3, startM: 42, endM: 53, endPlusD: 30 },
   { kind: '구강',   n: 4, startM: 54, endM: 65, endPlusD: 30 }
 ];
+
+/**
+ * 주사용 생백신은 같은 날 함께 맞거나, 아니면 4주(28일) 간격을 둬야 한다.
+ * 경구용(로타)은 해당 없음. 방문을 묶을 때 이 규칙을 지켜야 한다.
+ */
+var LIVE_VACCINE_MIN_GAP_DAYS = 28;
 
 /**
  * 인플루엔자 — 매년 반복이라 차수 모델로 표현할 수 없어 따로 둔다.

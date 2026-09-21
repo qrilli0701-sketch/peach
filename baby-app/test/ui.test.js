@@ -15,7 +15,7 @@ try { chromium = require('playwright').chromium; } catch (e) { /* devDependency 
 const PREINSTALLED = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 const skip = chromium ? false : 'playwright 미설치';
 const PORT = 8788;
-const TABS = ['today', 'growth', 'sched', 'log'];
+const TABS = ['today', 'growth', 'sched'];
 
 async function withPage(scheme, fn) {
   const { boot, serve } = require('../tools/preview');
@@ -32,7 +32,7 @@ async function withPage(scheme, fn) {
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   try {
     await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('.tiles', { timeout: 15000 });
+    await page.waitForSelector('.visit', { timeout: 15000 });
     await fn(page, errors);
   } finally {
     await browser.close();
@@ -72,9 +72,7 @@ test('스위치는 라벨과 같은 줄, 오른쪽에 놓인다', { skip }, asyn
   // .field label{display:block} 이 .check 의 flex 를 덮어써서 스위치가 아래로
   // 밀려났던 적이 있다. 좌표로 확인한다.
   await withPage('light', async (page) => {
-    await page.click('#nav-log');
-    await page.waitForTimeout(300);
-    await page.click('.quick button:nth-child(2)');       // 이유식
+    await page.click('.visit-acts .btn:nth-child(2)');    // 다녀왔어요
     await page.waitForSelector('.switch', { timeout: 5000 });
 
     const box = await page.evaluate(() => {
@@ -92,11 +90,9 @@ test('스위치는 라벨과 같은 줄, 오른쪽에 놓인다', { skip }, asyn
   });
 });
 
-test('스위치를 켜면 초록으로 바뀌고 손잡이가 움직인다', { skip }, async () => {
+test('스위치를 끄면 회색으로 바뀌고 손잡이가 움직인다', { skip }, async () => {
   await withPage('light', async (page) => {
-    await page.click('#nav-log');
-    await page.waitForTimeout(300);
-    await page.click('.quick button:nth-child(2)');
+    await page.click('.visit-acts .btn:nth-child(2)');
     await page.waitForSelector('.switch');
     const before = await page.evaluate(() =>
       getComputedStyle(document.querySelector('.switch .knob')).transform);
@@ -104,21 +100,17 @@ test('스위치를 켜면 초록으로 바뀌고 손잡이가 움직인다', { s
     await page.waitForTimeout(350);
     const after = await page.evaluate(() => ({
       knob: getComputedStyle(document.querySelector('.switch .knob')).transform,
-      track: getComputedStyle(document.querySelector('.switch .track')).backgroundColor,
       checked: document.querySelector('.switch input').checked
     }));
-    assert.equal(after.checked, true);
+    assert.equal(after.checked, false, '방문 항목은 기본이 켜짐이라 누르면 꺼진다');
     assert.notEqual(after.knob, before, '손잡이가 움직여야 합니다');
-    assert.match(after.track, /52,\s*199,\s*89/, '켜진 트랙은 systemGreen 이어야 합니다');
   });
 });
 
 test('바텀 시트는 화면 아래에 붙는다', { skip }, async () => {
   // margin:0 auto auto 때문에 시트가 화면 위에 붙어 있던 적이 있다
   await withPage('light', async (page) => {
-    await page.click('#nav-log');
-    await page.waitForTimeout(300);
-    await page.click('.quick button:nth-child(1)');
+    await page.click('.visit-acts .btn:nth-child(2)');
     await page.waitForSelector('.sheet');
     await page.waitForTimeout(400);
     const r = await page.evaluate(() => {
@@ -126,7 +118,10 @@ test('바텀 시트는 화면 아래에 붙는다', { skip }, async () => {
       return { bottom: s.bottom, top: s.top, vh: window.innerHeight, w: s.width };
     });
     assert.ok(Math.abs(r.bottom - r.vh) < 2, `시트 아래가 화면 바닥에 붙어야 합니다 (${r.bottom} vs ${r.vh})`);
-    assert.ok(r.top > r.vh * 0.2, '시트가 화면 위쪽까지 차지하면 안 됩니다');
+    // 항목이 많으면 시트가 길어질 수 있지만 화면을 다 덮으면 안 된다 (max-height:88vh)
+    const height = r.bottom - r.top;
+    assert.ok(height <= r.vh * 0.89, `시트 높이 ${height} 가 88vh 를 넘습니다`);
+    assert.ok(r.top > 0, '시트 위가 화면 밖으로 나가면 안 됩니다');
     assert.ok(r.w <= 390, '시트가 화면 폭을 넘지 않아야 합니다');
   });
 });
@@ -163,5 +158,37 @@ test('행의 제목과 부제가 각각 줄을 차지한다', { skip }, async ()
     });
     assert.ok(r.dTop >= r.tBottom - 1, '부제가 제목 아래 줄에 있어야 합니다');
     assert.ok(Math.abs(r.tx - r.dx) < 1, '제목과 부제의 왼쪽이 맞아야 합니다');
+  });
+});
+
+
+test('홈은 방문 카드 하나로 시작한다', { skip }, async () => {
+  // 똑같이 생긴 행 10개를 늘어놓던 화면을 날짜 하나로 바꾼 게 핵심이다
+  await withPage('light', async (page) => {
+    const card = await page.evaluate(() => {
+      const v = document.querySelector('.visit');
+      if (!v) return null;
+      return {
+        date: v.querySelector('.visit-date') && v.querySelector('.visit-date').textContent,
+        sum: v.querySelector('.visit-sum') && v.querySelector('.visit-sum').textContent,
+        chips: [...v.querySelectorAll('.chip')].map(c => c.textContent),
+        acts: [...v.querySelectorAll('.visit-acts .btn')].map(b => b.textContent),
+        top: v.getBoundingClientRect().top
+      };
+    });
+    assert.ok(card, '방문 카드가 없습니다');
+    assert.match(card.date, /\d+월 \d+일 \([일월화수목금토]\)/);
+    assert.match(card.sum, /개가 끝납니다/);
+    assert.ok(card.chips.length >= 5, '묶인 항목이 칩으로 보여야 합니다: ' + card.chips.length);
+    assert.deepEqual(card.acts, ['캘린더에 넣기', '다녀왔어요']);
+    assert.ok(card.top < 400, '방문 카드는 화면 맨 위에 있어야 합니다');
+  });
+});
+
+test('탭은 세 개뿐이다 (기록은 전용 앱에 맡긴다)', { skip }, async () => {
+  await withPage('light', async (page) => {
+    const labels = await page.evaluate(() =>
+      [...document.querySelectorAll('nav button')].map(b => b.textContent.trim()));
+    assert.deepEqual(labels, ['오늘', '성장', '일정']);
   });
 });

@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const SRC = path.join(ROOT, 'src');
 const TODAY = '2026-09-21';
 const FILES = ['data_lms.gs', 'data_schedule.gs', 'lib_growth.gs', 'lib_schedule.gs',
-               'Setup.gs', 'Store.gs', 'Code.gs', 'Api.gs', 'Triggers.gs'];
+               'lib_visit.gs', 'Setup.gs', 'Store.gs', 'Code.gs', 'Api.gs', 'Triggers.gs'];
 
 /* ── 가짜 런타임 + 보여줄 만한 데이터 ─────────────────── */
 function boot() {
@@ -143,7 +143,7 @@ async function shoot(port) {
   const preinstalled = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
   const browser = await chromium.launch(
     fs.existsSync(preinstalled) ? { executablePath: preinstalled } : {});
-  const tabs = [['today', '오늘'], ['growth', '성장'], ['sched', '일정'], ['log', '기록']];
+  const tabs = [['today', '오늘'], ['growth', '성장'], ['sched', '일정']];
 
   for (const scheme of ['light', 'dark']) {
     // isMobile 을 켜면 이 크로미움 빌드에서 뷰포트 메타가 무시되고 980px 폭으로
@@ -158,7 +158,7 @@ async function shoot(port) {
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
 
     await page.goto(`http://localhost:${port}/`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('.tiles, .note', { timeout: 10000 });
+    await page.waitForSelector('.visit', { timeout: 10000 });
 
     for (const [tab, label] of tabs) {
       await page.click(`#nav-${tab}`);
@@ -168,10 +168,10 @@ async function shoot(port) {
       await page.screenshot({ path: path.join(outDir, `${scheme}-${tab}.png`), fullPage: true });
       process.stdout.write(`  ${scheme}/${label}(${h}) `);
     }
-    // 바텀 시트 한 장
-    await page.click('#nav-log');
-    await page.waitForTimeout(300);
-    await page.click('.quick button:nth-child(2)');
+    // 바텀 시트 한 장 — '다녀왔어요'
+    await page.click('#nav-today');
+    await page.waitForTimeout(400);
+    await page.click('.visit-acts .btn:nth-child(2)');
     await page.waitForTimeout(600);
     await page.screenshot({ path: path.join(outDir, `${scheme}-sheet.png`) });
     console.log(`${scheme}/시트`);

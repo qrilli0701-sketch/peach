@@ -11,7 +11,7 @@ const { makeEnv } = require('./appsscript.mock');
 
 const SRC = path.join(__dirname, '..', 'src');
 const FILES = ['data_lms.gs', 'data_schedule.gs', 'lib_growth.gs', 'lib_schedule.gs',
-               'Setup.gs', 'Store.gs', 'Code.gs', 'Api.gs', 'Triggers.gs'];
+               'lib_visit.gs', 'Setup.gs', 'Store.gs', 'Code.gs', 'Api.gs', 'Triggers.gs'];
 
 function boot(opts) {
   const env = makeEnv(opts);
@@ -148,7 +148,9 @@ test('전체 흐름: 아이 등록 → 성장 → 일정 → 기록', () => {
   assert.ok(d.growth.metrics.wfa.value === 10.2);
   assert.equal(d.growth.metrics.wfa.unit, 'kg');
   assert.ok(d.overdue.length > 0);
-  assert.equal(d.todaySummary.entryCount, 5);
+  // 홈은 이제 방문 중심이라 생활기록 요약을 싣지 않는다 (logs 액션에 남아 있다)
+  assert.equal(d.todaySummary, undefined);
+  assert.equal(api(S, 'logs', { childId: id, days: 2 }).summary.entryCount, 5);
 
   // 할일
   const t = api(S, 'todoAdd', { childId: id, title: '어린이집 서류', due: '2026-03-10', owner: '아빠' });
@@ -363,8 +365,8 @@ test('새 재료는 3일간 관찰 목록에 남는다', () => {
   // 지금까지 먹인 재료는 전부 남는다
   assert.deepEqual(w.introduced.sort(), ['단호박', '소고기', '쌀미음']);
 
-  // 홈 화면에도 실려 나간다
-  assert.equal(api(S, 'dashboard', { childId: id }).foodWatch.length, 1);
+  // 홈 화면에서는 걷어냈다 — foodWatch 액션으로만 남는다
+  assert.equal(api(S, 'dashboard', { childId: id }).foodWatch, undefined);
 });
 
 test('같은 재료를 여러 번 먹여도 관찰은 처음 한 번만', () => {
@@ -425,4 +427,91 @@ test('2026-03-21생 남아, 2026-09-21 시점의 일정이 맞다', () => {
 
   // 로타는 생후 8개월 전에 끝내야 한다 — 3차 창이 그 전에 닫히는지
   assert.ok(byKey['RV#3'].end <= '2026-11-21', '생후 8개월(2026-11-21) 이전이어야 한다');
+});
+
+
+/* ── 방문 계획 API ──────────────────────────────────── */
+
+test('visits: 할 일 목록 대신 방문 계획을 돌려준다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '복숭', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'vaccineChoice', { childId: id, series: 'rota', choice: 'RV5' });
+  api(S, 'scheduleBulkDone', { childId: id, items: [
+    { key: 'BCG#1', date: '2026-04-02' }, { key: 'HepB#1', date: '2026-03-21' },
+    { key: 'HepB#2', date: '2026-04-22' }, { key: '영유아#1', date: '2026-04-10' },
+    { key: 'DTaP#1', date: '2026-05-23' }, { key: 'IPV#1', date: '2026-05-23' },
+    { key: 'Hib#1', date: '2026-05-23' }, { key: 'PCV#1', date: '2026-05-23' },
+    { key: 'RV#1', date: '2026-05-23' },
+    { key: 'DTaP#2', date: '2026-07-25' }, { key: 'IPV#2', date: '2026-07-25' },
+    { key: 'Hib#2', date: '2026-07-25' }, { key: 'PCV#2', date: '2026-07-25' },
+    { key: 'RV#2', date: '2026-07-25' }
+  ]});
+
+  const v = api(S, 'visits', { childId: id });
+  assert.ok(v.visits.length >= 2);
+  const first = v.visits[0];
+  assert.ok(first.items.length >= 6, '첫 방문에 여러 개가 묶여야 한다');
+  assert.match(first.dateLabel, /^\d+월 \d+일 \([일월화수목금토]\)$/);
+  assert.match(first.summary, /개가 끝납니다/);
+  assert.ok(first.reason.length > 0);
+  assert.match(first.title, /^\[복숭\] 소아과/);
+  assert.ok(first.items.some(i => i.free), '무료 검진이 표시돼야 한다');
+  assert.equal(typeof v.laterCount, 'number');
+});
+
+test('visitDone: 방문 한 건을 통째로 완료 처리한다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '복숭', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  const before = api(S, 'visits', { childId: id }).visits[0];
+  const keys = before.items.map(i => i.key);
+
+  const r = api(S, 'visitDone', { childId: id, date: before.date, keys: keys, place: 'OO소아과' });
+  assert.equal(r.saved, keys.length);
+
+  const sch = api(S, 'schedule', { childId: id });
+  for (const k of keys) {
+    assert.equal(sch.items.find(x => x.key === k).doneDate, before.date, k + ' 미완료');
+  }
+  const after = api(S, 'visits', { childId: id }).visits[0];
+  assert.notDeepEqual(after ? after.items.map(i => i.key) : [], keys, '다음 방문으로 넘어가야 한다');
+});
+
+test('visitDone: 잘못된 입력은 거부한다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '복숭', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  assert.throws(() => api(S, 'visitDone', { childId: id, keys: [] }), /완료할 항목이 없습니다/);
+  assert.throws(() => api(S, 'visitDone', { childId: id, keys: ['BCG#1'], date: '엉터리' }), /yyyy-MM-dd/);
+  assert.throws(() => api(S, 'visitDone', { childId: id, keys: ['BCG#1'], date: '2026-01-01' }), /생년월일/);
+});
+
+test('visitCalendar: 누른 사람 캘린더에 종일 일정이 들어간다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '복숭', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  const v = api(S, 'visits', { childId: id }).visits[0];
+  api(S, 'visitCalendar', { childId: id, date: v.date, title: v.title, detail: '테스트' });
+
+  const evs = S._env.calendarEvents.filter(e => !e._deleted);
+  assert.equal(evs.length, 1);
+  assert.equal(evs[0]._title, v.title);
+  assert.equal(evs[0].getTag('babyapp'), '1');
+  assert.match(evs[0]._opts.description, /nip\.kdca\.go\.kr/);
+  assert.throws(() => api(S, 'visitCalendar', { childId: id, date: 'x' }), /날짜가 올바르지 않습니다/);
+});
+
+test('주간 메일이 목록보다 다음 방문을 먼저 말한다', () => {
+  const S = boot({ now: '2026-09-21' });
+  const id = api(S, 'childSave', { name: '복숭', birthDate: '2026-03-21', sexLabel: '남' }).id;
+  api(S, 'vaccineChoice', { childId: id, series: 'rota', choice: 'RV5' });
+  vm.runInContext('weeklyDigest();', S);
+
+  const body = S._env.sentMail[0].htmlBody;
+  assert.match(body, /다음 병원 방문/);
+  assert.match(body, /\d+월 \d+일 \([일월화수목금토]\)/);
+  assert.match(body, /개가 끝납니다/);
+  // 방문 안내가 '지났습니다' 목록보다 앞에 온다
+  assert.ok(body.indexOf('다음 병원 방문') < body.indexOf('지났습니다'), '방문이 먼저여야 한다');
+  // 방문 블록 안에서는 괄호 약어를 걷어내 짧게 쓴다 (아래 목록은 정식 명칭 그대로)
+  const block = body.slice(body.indexOf('다음 병원 방문'), body.indexOf('지났습니다'));
+  assert.ok(!block.includes('(DTaP)'), '방문 요약은 짧은 이름을 써야 한다');
+  assert.match(block, /디프테리아·파상풍·백일해 3차/);
 });

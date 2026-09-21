@@ -131,9 +131,7 @@ var API_ACTIONS = {
         return { id: t['할일ID'], title: t['제목'], due: String(t['기한'] || '').trim(),
                  owner: t['담당'], category: t['분류'] };
       }).sort(function (a, b) { return (a.due || '9999') < (b.due || '9999') ? -1 : 1; }),
-      growth: growth,
-      todaySummary: todaySummary_(c.id, ctx.today),
-      foodWatch: API_ACTIONS.foodWatch({ childId: c.id }, ctx).watching
+      growth: growth
     };
   },
 
@@ -228,6 +226,70 @@ var API_ACTIONS = {
     patch[col] = choice;
     updateRow('아이', '아이ID', c.id, patch);
     return { series: p.series, choice: choice };
+  },
+
+  /**
+   * 다음 병원 방문 계획 — 이 앱의 핵심.
+   * 할 일 목록 대신 "언제 한 번 가면 몇 개가 끝나는지"를 돌려준다.
+   */
+  visits: function (p, ctx) {
+    var c = child_(p.childId);
+    var plan = buildFullPlan(c, c.options, doneMap_(c.id), ctx.today);
+    var r = planVisits(plan, ctx.today);
+
+    return {
+      visits: r.visits.map(function (v) {
+        return {
+          date: v.date, dateLabel: visitDateLabel(v.date), weekday: v.weekday,
+          summary: visitSummary(v, ctx.today), reason: visitReason(v, ctx.today),
+          daysAway: daysBetween(ctx.today, v.date),
+          overdueCount: v.overdueCount, earliestDeadline: v.earliestDeadline,
+          title: visitTitle(v, c.name),
+          items: v.items.map(function (it) {
+            return { key: it.key, name: it.name, dose: it.dose, totalDoses: it.totalDoses,
+                     end: it.end, status: it.status, free: it.code === '영유아' || it.code === '구강' };
+          })
+        };
+      }),
+      laterCount: r.later.length
+    };
+  },
+
+  /** 방문 한 건을 통째로 완료 처리 — 병원 다녀와서 한 번만 누르면 된다 */
+  visitDone: function (p, ctx) {
+    var c = child_(p.childId);
+    var date = p.date || ctx.today;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error('날짜 형식은 yyyy-MM-dd');
+    if (daysBetween(c.birthDate, date) < 0) throw new Error('생년월일보다 빠른 날짜입니다');
+    var keys = p.keys || [];
+    if (!keys.length) throw new Error('완료할 항목이 없습니다');
+
+    for (var i = 0; i < keys.length; i++) {
+      deleteWhere('일정완료', { '아이ID': c.id, '항목키': keys[i] });
+      appendRow('일정완료', {
+        '아이ID': c.id, '항목키': keys[i], '완료일': date,
+        '기관': p.place || '', '기록자': ctx.who, '메모': '방문 일괄 완료'
+      });
+    }
+    return { saved: keys.length, date: date };
+  },
+
+  /**
+   * 방문을 캘린더에 넣는다. 웹앱이 '접속한 사용자'로 실행되므로
+   * 누르는 사람 본인 캘린더에 들어간다 — 부부가 각자 알림을 받는다.
+   */
+  visitCalendar: function (p, ctx) {
+    var c = child_(p.childId);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || ''))) throw new Error('날짜가 올바르지 않습니다');
+    var cal = CalendarApp.getDefaultCalendar();
+    if (!cal) throw new Error('캘린더를 찾을 수 없습니다');
+
+    var title = p.title || ('[' + c.name + '] 소아과');
+    var ev = cal.createAllDayEvent(title, new Date(ymdToUtc(p.date)), {
+      description: (p.detail || '') + '\n\n참고용입니다. 확인: nip.kdca.go.kr'
+    });
+    ev.setTag('babyapp', '1');
+    return { date: p.date, title: title };
   },
 
   /* ── 성장 ─────────────────────────────────────────── */

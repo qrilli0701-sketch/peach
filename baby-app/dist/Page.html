@@ -159,6 +159,34 @@
     box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);
   }
 
+  /* ── 방문 카드 — 이 앱의 주인공 ──────────────────── */
+  .visit{
+    background:var(--card);border-radius:14px;margin:0 16px;overflow:hidden;
+  }
+  .visit.urgent{box-shadow:0 0 0 2px var(--red) inset}
+  .visit-head{padding:18px 18px 14px}
+  .visit-when{font-size:13px;line-height:18px;color:var(--label-2);letter-spacing:-.01em}
+  .visit-date{font-size:30px;line-height:36px;font-weight:700;letter-spacing:.3px;margin:2px 0 6px}
+  .visit-sum{font-size:17px;line-height:22px;font-weight:600;color:var(--blue)}
+  .visit.urgent .visit-sum{color:var(--red)}
+  .visit-why{font-size:13px;line-height:18px;color:var(--label-2);margin-top:4px}
+  .visit-items{padding:0 18px 4px;display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    font-size:13px;line-height:18px;padding:5px 10px;border-radius:999px;
+    background:var(--fill);color:var(--label);white-space:nowrap;
+  }
+  .chip.free{background:rgba(52,199,89,.16);color:var(--green)}
+  .chip.late{background:rgba(255,59,48,.14);color:var(--red)}
+  .visit-acts{display:flex;gap:10px;padding:14px 18px 18px}
+  .visit-acts .btn{flex:1;padding:12px 10px;font-size:15px}
+  .visit-next{
+    padding:12px 18px;font-size:13px;line-height:18px;color:var(--label-2);
+    position:relative;background:var(--card);
+  }
+  .visit-next::before{
+    content:'';position:absolute;left:18px;right:0;top:0;height:.5px;background:var(--sep);
+  }
+
   /* ── 통계 타일 ─────────────────────────────────────── */
   .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 16px}
   .tile{background:var(--card);border-radius:var(--radius);padding:14px 10px;text-align:center}
@@ -330,10 +358,6 @@
     fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true"><rect x="3.8" y="5.4" width="18.4" height="16.4" rx="3.2"/><path d="M3.8 10.3h18.4"/>
     <path d="M8.6 3.2v4"/><path d="M17.4 3.2v4"/><path d="M9.3 15.6l2.6 2.6 5-5"/></svg></span>일정</button>
-  <button id="nav-log" onclick="go('log')"><span class="ic"><svg viewBox="0 0 26 26"
-    fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
-    aria-hidden="true"><path d="M20.4 13.6V19a2.8 2.8 0 0 1-2.8 2.8H7A2.8 2.8 0 0 1 4.2 19V8.4A2.8 2.8 0
-    0 1 7 5.6h5.4"/><path d="M17.3 4.5a2.1 2.1 0 0 1 3 3l-7.4 7.4-3.7.7.7-3.7z"/></svg></span>기록</button>
 </nav>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -385,12 +409,12 @@ function switchChild(id){ S.childId = id; localStorage.setItem('childId', id); S
 
 function go(tab){
   S.tab = tab;
-  ['today','growth','sched','log'].forEach(function(t){
+  ['today','growth','sched'].forEach(function(t){
     var b = $('nav-'+t); if(b) b.classList.toggle('on', t===tab);
   });
   window.scrollTo(0,0);
   busy();
-  ({ today: renderToday, growth: renderGrowth, sched: renderSched, log: renderLog })[tab]();
+  ({ today: renderToday, growth: renderGrowth, sched: renderSched })[tab]();
 }
 
 /* 스크롤하면 네비게이션 바에 헤어라인이 생긴다 (iOS 기본 동작) */
@@ -444,13 +468,29 @@ function field(label, inner){
   return '<div class="field"><label>'+esc(label)+'</label>'+inner+'</div>';
 }
 
-/* ── 오늘 ────────────────────────────────────────────── */
+/* ── 홈 — 다음 병원 방문 ─────────────────────────────── */
 function renderToday(){
-  call('dashboard', { childId: S.childId }).then(function(d){
+  Promise.all([ call('visits', { childId: S.childId }),
+                call('dashboard', { childId: S.childId }) ])
+  .then(function(r){
+    var V = r[0], d = r[1];
+    VISITS = V.visits;
     $('ageLabel').textContent = d.child.ageLabel;
     var h = '';
 
+    if(V.visits.length){
+      h += visitCard(V.visits[0], V.visits[1]);
+    } else {
+      h += '<div class="visit"><div class="visit-head">'+
+        '<div class="visit-sum" style="color:var(--green)">당장 병원 갈 일이 없습니다</div>'+
+        '<div class="visit-why">'+(V.laterCount ? '다음 일정은 '+V.laterCount+'건, 아직 시간이 있습니다.'
+                                                : '예정된 접종·검진이 모두 끝났습니다.')+'</div>'+
+        '</div></div>';
+    }
+
+    // 성장 — 숫자 세 개면 충분하다
     if(d.growth){
+      h += sec('성장 · ' + esc(d.growth.date) + ' 측정');
       h += '<div class="tiles">';
       ['lhfa','wfa','hcfa'].forEach(function(k){
         var m = d.growth.metrics[k]; if(!m) return;
@@ -464,69 +504,132 @@ function renderToday(){
              esc(t.message)+'</div></div>';
       });
     } else {
-      h += '<div class="note">키·몸무게를 입력하면 백분위가 계산됩니다. '+
-           '<a href="#" onclick="go(\'growth\');return false">성장 탭으로 →</a></div>';
+      h += sec('성장');
+      h += '<div class="list"><button class="row" onclick="go(\'growth\')">'+
+        '<span class="main"><span class="t" style="color:var(--blue)">키·몸무게 입력하기</span>'+
+        '<span class="d">넣는 즉시 백분위가 계산됩니다</span></span>'+
+        '<span class="chev">›</span></button></div>';
     }
 
-    if(d.overdue.length) h += sec('지났습니다', d.overdue.length) + list(d.overdue.map(itemRow));
-    if(d.open.length)    h += sec('지금 하실 수 있습니다', d.open.length) + list(d.open.map(itemRow));
-    if(d.soon.length)    h += sec('곧 시작됩니다', d.soon.length) + list(d.soon.map(itemRow));
-
-    if(d.foodWatch && d.foodWatch.length){
-      h += sec('새 재료 관찰 중', d.foodWatch.length);
-      h += list(d.foodWatch.map(function(f){
-        return '<div class="row"><span class="emoji">🥣</span>'+
-          '<span class="main"><span class="t">'+esc(f.food)+'</span>'+
-          '<span class="d">'+esc(f.startedOn)+' 처음 먹임</span></span>'+
-          '<span class="badge'+(f.dayNo>=f.totalDays?' green':'')+'">'+
-          (f.dayNo>=f.totalDays?'관찰 끝':f.dayNo+'일째')+'</span></div>';
-      }));
-    }
-
-    h += sec('오늘') + '<div class="list"><div class="row"><span class="main">'+
-         summaryLine(d.todaySummary)+'</span></div></div>';
-
-    h += sec('할 일', d.todos.length || null);
-    var todoRows = d.todos.map(function(t){
-      return '<div class="row tappable" onclick="todoDone(\''+esc(t.id)+'\')">'+
-        '<span class="main"><span class="t">'+esc(t.title)+'</span>'+
-        '<span class="d">'+esc(t.category||'')+(t.due?' · '+esc(t.due):'')+
-        (t.owner?' · '+esc(t.owner):'')+'</span></span>'+
-        '<span class="badge">완료</span></div>';
+    // 병원 밖에서 할 일 — 행정·직접 추가한 것
+    var offsite = d.overdue.concat(d.open).filter(function(x){
+      return x.code === 'admin' || x.needsChoice;
     });
-    todoRows.push('<button class="row" onclick="openTodoSheet()">'+
-      '<span class="main"><span class="t" style="color:var(--blue)">할 일 추가</span></span>'+
-      '<span class="chev">›</span></button>');
-    h += list(todoRows);
+    if(offsite.length || d.todos.length){
+      h += sec('병원 밖에서 할 일', (offsite.length + d.todos.length) || null);
+      var rows = offsite.map(itemRow);
+      d.todos.forEach(function(t){
+        rows.push('<div class="row tappable" onclick="todoDone(\''+esc(t.id)+'\')">'+
+          '<span class="main"><span class="t">'+esc(t.title)+'</span>'+
+          '<span class="d">'+(t.due?esc(t.due):'기한 없음')+(t.owner?' · '+esc(t.owner):'')+'</span></span>'+
+          '<span class="badge">완료</span></div>');
+      });
+      rows.push('<button class="row" onclick="openTodoSheet()">'+
+        '<span class="main"><span class="t" style="color:var(--blue)">할 일 추가</span></span>'+
+        '<span class="chev">›</span></button>');
+      h += list(rows);
+    }
 
     h += footNote();
     view(h);
   }).catch(fail);
 }
 
-function summaryLine(s){
-  var parts = [];
-  parts.push(s.lastFeed ? '마지막 수유/이유식 <b>'+esc(s.lastFeed.at)+'</b>'+
-             (s.lastFeed.detail?' ('+esc(s.lastFeed.detail)+')':'')+
-             (s.lastFeed.by?' · '+esc(s.lastFeed.by):'') : '수유/이유식 기록 없음');
-  if(s.sleepMinutes) parts.push('수면 <b>'+Math.floor(s.sleepMinutes/60)+'시간 '+(s.sleepMinutes%60)+'분</b>');
-  if(s.poopCount) parts.push('배변 <b>'+s.poopCount+'회</b>');
-  if(s.lastTemp) parts.push('체온 <b>'+esc(s.lastTemp.value)+'</b> ('+esc(s.lastTemp.at)+')');
-  if(s.medCount) parts.push('투약 <b>'+s.medCount+'회</b>');
-  var h = '<span class="t" style="line-height:24px">'+parts.join(' · ')+'</span>';
-  if(s.memo) h += '<span class="d" style="margin-top:6px">💬 '+esc(s.memo)+'</span>';
-  return h;
+/** 방문 카드 — 날짜 하나, 문장 하나, 버튼 두 개 */
+function visitCard(v, next){
+  var urgent = v.overdueCount > 0;
+  var when = v.daysAway <= 0 ? '지금 가셔도 됩니다'
+           : v.daysAway === 1 ? '내일'
+           : v.daysAway + '일 뒤';
+
+  var h = '<div class="visit'+(urgent?' urgent':'')+'">'+
+    '<div class="visit-head">'+
+      '<div class="visit-when">다음 병원 방문 · '+esc(when)+'</div>'+
+      '<div class="visit-date">'+esc(v.dateLabel)+'</div>'+
+      '<div class="visit-sum">'+esc(v.summary)+'</div>'+
+      '<div class="visit-why">'+esc(v.reason)+'</div>'+
+    '</div>'+
+    '<div class="visit-items">'+
+      v.items.map(function(it){
+        var cls = it.status==='overdue' ? 'late' : it.free ? 'free' : '';
+        return '<span class="chip '+cls+'">'+esc(shortName(it.name))+
+               (it.dose?' '+it.dose+'차':'')+'</span>';
+      }).join('')+
+    '</div>'+
+    '<div class="visit-acts">'+
+      (v.daysAway > 0
+        ? '<button class="btn tinted" onclick="openVisitDone()">다녀왔어요</button>'+
+          '<button class="btn" onclick="addVisitToCalendar()">캘린더에 넣기</button>'
+        : '<button class="btn tinted" onclick="addVisitToCalendar()">캘린더에 넣기</button>'+
+          '<button class="btn" onclick="openVisitDone()">다녀왔어요</button>')+
+    '</div>';
+
+  if(next){
+    h += '<div class="visit-next">그 다음 — '+esc(next.dateLabel)+' · '+
+         esc(next.items.length)+'개 '+
+         '<span style="color:var(--label-3)">('+esc(next.items.map(function(i){
+           return shortName(i.name); }).slice(0,3).join(', '))+
+         (next.items.length>3?' 외':'')+')</span></div>';
+  }
+  return h + '</div>';
+}
+
+/** 화면에 들어가게 괄호 약어를 걷어낸다 */
+function shortName(name){
+  return String(name).replace(/\s*\([^)]*\)/g, '').trim();
+}
+
+var VISITS = null;
+function addVisitToCalendar(){
+  var v = VISITS && VISITS[0];
+  if(!v) return;
+  var detail = v.items.map(function(it){
+    return '· '+shortName(it.name)+(it.dose?' '+it.dose+'차':'')+' (마감 '+it.end+')'; }).join('\n');
+  call('visitCalendar', { childId: S.childId, date: v.date, title: v.title, detail: detail })
+    .then(function(){ toast('내 캘린더에 넣었습니다'); })
+    .catch(function(e){ toast(e.message); });
+}
+
+function openVisitDone(){
+  var v = VISITS && VISITS[0];
+  if(!v) return;
+  sheet('다녀오셨나요?',
+    '<div class="note">아래 '+v.items.length+'개를 한 번에 완료 처리합니다. '+
+      '못 맞은 게 있으면 끄세요.</div>'+
+    '<div class="list" style="margin-top:12px">'+
+      field('다녀온 날', '<input id="vDate" type="date" value="'+esc(v.date)+'">')+
+      field('병원 (선택)', '<input id="vPlace" placeholder="예: OO소아과">')+
+      v.items.map(function(it, i){
+        return '<div class="row"><label class="check" style="flex:1">'+
+          '<span class="txt"><span class="t">'+esc(shortName(it.name))+
+            (it.dose?' '+it.dose+'차':'')+'</span>'+
+          '<span class="d">마감 '+esc(it.end)+'</span></span>'+
+          '<span class="switch"><input type="checkbox" class="vChk" checked '+
+            'data-key="'+esc(it.key)+'"><span class="track"></span><span class="knob"></span></span>'+
+        '</label></div>';
+      }).join('')+
+    '</div>',
+    '완료 처리', 'submitVisitDone()');
+}
+function submitVisitDone(){
+  var boxes = document.querySelectorAll('.vChk'), keys = [];
+  for(var i=0;i<boxes.length;i++) if(boxes[i].checked) keys.push(boxes[i].getAttribute('data-key'));
+  if(!keys.length) return toast('켜둔 항목이 없습니다');
+  call('visitDone', { childId: S.childId, date: $('vDate').value,
+                      place: $('vPlace').value, keys: keys })
+    .then(function(r){ closeDialog(); toast(r.saved+'개 완료했습니다'); go('today'); })
+    .catch(function(e){ toast(e.message); });
 }
 
 function openTodoSheet(){
   sheet('할 일 추가',
     '<div class="list">'+
-      field('할 일', '<input id="todoTitle" placeholder="예: 어린이집 준비물" autofocus>')+
+      field('할 일', '<input id="todoTitle" placeholder="예: 어린이집 서류" autofocus>')+
       field('기한', '<input id="todoDue" type="date">')+
       field('담당', '<select id="todoOwner"><option value="">없음</option>'+
                     '<option>아빠</option><option>엄마</option></select>')+
     '</div>',
-    '할 일 추가', 'todoAdd()');
+    '추가', 'todoAdd()');
 }
 function todoAdd(){
   var title = $('todoTitle').value.trim();
@@ -814,97 +917,6 @@ function submitBulk(){
     toast(r.saved + '건 저장했습니다' + (r.skipped.length ? ' ('+r.skipped.length+'건 건너뜀)' : ''));
     go('sched');
   }).catch(function(e){ toast(e.message); });
-}
-
-/* ── 기록 ────────────────────────────────────────────── */
-var LOGTYPES = [['수유','🍼'],['이유식','🥣'],['수면','😴'],['배변','💩'],['체온','🌡'],['투약','💊']];
-function renderLog(){
-  call('logs', { childId: S.childId, days: 2 }).then(function(d){
-    var h = '<div class="quick">'+LOGTYPES.map(function(t){
-      return '<button onclick="quickLog(\''+t[0]+'\')"><span class="ic">'+t[1]+'</span>'+t[0]+'</button>';
-    }).join('')+'</div>';
-
-    h += sec('오늘');
-    h += '<div class="list"><div class="row"><span class="main">'+summaryLine(d.summary)+'</span></div>'+
-      '<button class="row" onclick="openMemoSheet()">'+
-      '<span class="main"><span class="t" style="color:var(--blue)">인수인계 메모 남기기</span></span>'+
-      '<span class="chev">›</span></button></div>';
-
-    h += sec('최근 기록', d.rows.length);
-    if(!d.rows.length){
-      h += '<div class="empty">기록이 없습니다.<br>위 버튼을 누르면 지금 시각으로 바로 기록됩니다.</div>';
-    } else {
-      h += list(d.rows.map(function(r){
-        var t = LOGTYPES.filter(function(x){ return x[0]===r.type; })[0];
-        return '<div class="row tappable" onclick="logDel(\''+esc(r.id)+'\')">'+
-          '<span class="emoji">'+(t?t[1]:'📝')+'</span>'+
-          '<span class="main"><span class="t">'+esc(r.type)+
-          (r.v1?' <span style="color:var(--label-2)">'+esc(r.v1)+(r.v2&&r.v2!=='신규'?'~'+esc(r.v2):'')+'</span>':'')+
-          (r.v2==='신규'?' <span class="badge orange">처음</span>':'')+'</span>'+
-          '<span class="d">'+esc(r.at)+(r.by?' · '+esc(r.by):'')+
-          (r.detail?' · '+esc(r.detail):'')+'</span></span>'+
-          '<span class="chev">›</span></div>';
-      }));
-      h += '<div class="foot" style="padding-top:10px">기록을 탭하면 삭제할 수 있습니다</div>';
-    }
-    h += footNote();
-    view(h);
-  }).catch(fail);
-}
-
-function openMemoSheet(){
-  sheet('인수인계 메모',
-    '<div class="list">'+field('내용', '<input id="memoText" placeholder="예: 낮잠 짧았음. 저녁에 보챌 수도" autofocus>')+'</div>',
-    '남기기', 'submitMemo()');
-}
-function submitMemo(){
-  var m = $('memoText').value.trim();
-  if(!m) return toast('내용을 입력해 주세요');
-  call('logAdd', { childId: S.childId, type: '메모', detail: m })
-    .then(function(){ closeDialog(); toast('남겼습니다'); go('log'); })
-    .catch(function(e){ toast(e.message); });
-}
-
-function quickLog(type){
-  var fields = {
-    '수유': field('양 / 종류', '<input id="q1" placeholder="예: 160ml 분유" autofocus>'),
-    '이유식': field('먹은 것 / 재료', '<input id="q1" placeholder="예: 소고기" autofocus>')+
-            '<div class="field"><label class="check">'+
-              '<span class="txt">처음 먹이는 재료'+
-                '<span class="d">켜두면 3일간 홈 화면에서 이상반응을 지켜봅니다</span></span>'+
-              '<span class="switch"><input type="checkbox" id="qNew">'+
-                '<span class="track"></span><span class="knob"></span></span>'+
-            '</label></div>',
-    '수면': '<div class="field"><div class="pair">'+
-            '<div><label>잠든 시각</label><input id="q1" type="time"></div>'+
-            '<div><label>깬 시각</label><input id="q2" type="time"></div></div></div>',
-    '배변': field('상태', '<select id="q1"><option>보통</option><option>묽음</option>'+
-            '<option>단단함</option><option>설사</option></select>'),
-    '체온': field('체온 (℃)', '<input id="q1" type="number" step="0.1" inputmode="decimal" placeholder="36.8" autofocus>'),
-    '투약': field('약 이름', '<input id="q1" placeholder="처방받은 약 이름" autofocus>')+
-            field('복용량', '<input id="q2" placeholder="예: 4ml">')
-  }[type] || '';
-
-  var warn = type==='투약'
-    ? '<div style="margin-top:12px"><div class="note warn">용량은 자동 계산하지 않습니다. '+
-      '처방전에 적힌 대로 입력하세요.</div></div>' : '';
-
-  sheet(type+' 기록',
-    '<div class="list">'+fields+field('메모 (선택)', '<input id="qd">')+'</div>'+warn,
-    '기록', 'submitLog(\''+type+'\')');
-}
-function submitLog(type){
-  var q1 = $('q1'), q2 = $('q2'), qd = $('qd'), qn = $('qNew');
-  var v2 = qn ? (qn.checked ? '신규' : '') : (q2 ? q2.value : '');
-  call('logAdd', { childId: S.childId, type: type,
-                   v1: q1?q1.value:'', v2: v2, detail: qd?qd.value:'' })
-    .then(function(){ closeDialog(); toast('기록했습니다'); go('log'); })
-    .catch(function(e){ toast(e.message); });
-}
-function logDel(id){
-  if(!confirm('이 기록을 지울까요?')) return;
-  call('logDelete', { id: id }).then(function(){ toast('삭제했습니다'); go('log'); })
-    .catch(function(e){ toast(e.message); });
 }
 
 /* ── 아이 설정 ───────────────────────────────────────── */

@@ -97,6 +97,8 @@ function buildVaccinePlan(child, options, done, todayYmd) {
         doneDate: doneYmd,
         status: windowStatus(w.start, w.end, todayYmd, doneYmd),
         nip: !!v.nip, annual: !!v.annual, note: spec.note || '',
+        live: !!(v.live || (v.variants && variantKey && v.variants[variantKey].live)),
+        minPrevD: spec.minPrevD || 0,
         shifted: !!(earliest && earliest > (spec.startD != null
                     ? addDays(child.birthDate, spec.startD)
                     : addMonths(child.birthDate, spec.startM || 0)))
@@ -196,6 +198,7 @@ function buildFluPlan(child, done, todayYmd) {
         doneDate: doneYmd,
         status: windowStatus(dStart, seasonEnd, todayYmd, doneYmd),
         nip: true, annual: true,
+        minPrevD: d > 1 ? r.firstTimeIntervalDays : 0,
         note: twoDoses ? '생애 첫 접종 — 4주 간격으로 2회' : '매 시즌 1회'
       });
     }
