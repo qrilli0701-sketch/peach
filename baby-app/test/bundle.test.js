@@ -15,11 +15,17 @@ const BUNDLE = path.join(ROOT, 'dist', '배포용_전체코드.gs');
 const PAGE = path.join(ROOT, 'dist', 'Page.html');
 
 test('번들이 src 와 같은 내용이다 (npm run bundle 을 깜빡하지 않았는지)', () => {
-  const before = fs.readFileSync(BUNDLE, 'utf8');
+  // 두 파일 다 '재생성 전' 내용을 먼저 잡아둬야 한다.
+  // 번들러를 돌린 뒤에 읽으면 항상 같아서 staleness 를 영영 못 잡는다.
+  const beforeGs = fs.readFileSync(BUNDLE, 'utf8');
+  const beforeHtml = fs.readFileSync(PAGE, 'utf8');
+
   execFileSync('node', [path.join(ROOT, 'tools', 'bundle.js')], { cwd: ROOT });
-  assert.equal(fs.readFileSync(BUNDLE, 'utf8'), before,
-    'src 를 고친 뒤 npm run bundle 을 실행하세요');
-  assert.equal(fs.readFileSync(PAGE, 'utf8'), fs.readFileSync(path.join(ROOT, 'src', 'Page.html'), 'utf8'));
+
+  assert.equal(fs.readFileSync(BUNDLE, 'utf8'), beforeGs,
+    'src/*.gs 를 고쳤습니다 — npm run bundle 을 실행하세요');
+  assert.equal(fs.readFileSync(PAGE, 'utf8'), beforeHtml,
+    'src/Page.html 을 고쳤습니다 — npm run bundle 을 실행하세요');
 });
 
 test('번들에 원본 9개 파일이 모두 들어 있다', () => {

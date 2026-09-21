@@ -47,9 +47,15 @@ clasp 를 쓰면 `clasp push` 한 줄로 끝납니다. `src/appsscript.json` 에
 
 ```bash
 npm install     # 교차검증용 devDependency (who-growth-standards)
-npm test        # 91개 테스트
+npm test        # 98개 테스트
 npm run bundle  # src/ → dist/배포용_전체코드.gs 재생성
+npm run preview # localhost:8787 에서 화면 미리보기 (배포 없이)
+npm run shots   # dist/preview/ 에 라이트·다크 스크린샷 저장
 ```
+
+`npm run preview` 는 `google.script.run` 을 로컬 HTTP 로 바꿔치고 그 뒤를 가짜 Apps Script
+런타임에 물린다. 즉 **배포하지 않고도 진짜 데이터 경로로 화면을 볼 수 있다.**
+디자인을 고칠 때는 이걸 켜두고 작업하는 편이 빠르다.
 
 계산 로직(`lib_growth.gs`, `lib_schedule.gs`)은 Apps Script API 를 전혀 쓰지 않는
 **순수 함수**라 node 에서 그대로 돌아간다. `test/load.js` 가 `.gs` 를 vm 컨텍스트에 올린다.
@@ -64,6 +70,7 @@ npm run bundle  # src/ → dist/배포용_전체코드.gs 재생성
 | `api.test.js` | 전체 흐름, 아이별 데이터 분리, 권한, 메일 이스케이프, 일괄 입력, 이유식 관찰 |
 | `syntax.test.js` | 붙여넣기 전 문법·태그 균형·프런트가 부르는 액션 존재 여부 |
 | `bundle.test.js` | 실제로 붙여넣는 `dist/` 파일이 src 와 같은지, 그 한 파일만으로 도는지 |
+| `ui.test.js` | 크로미움으로 실제 렌더링. 가로 넘침, 스위치 위치, 시트 정렬, 다크 모드 |
 
 **`src/` 를 고쳤으면 `npm run bundle` 을 잊지 마세요.** 테스트가 확인해 주긴 합니다.
 

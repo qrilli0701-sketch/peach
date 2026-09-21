@@ -6,9 +6,12 @@
   "scripts": {
     "test": "node --test test/*.test.js",
     "gen:lms": "node tools/gen_lms.js",
-    "bundle": "node tools/bundle.js"
+    "bundle": "node tools/bundle.js",
+    "preview": "node tools/preview.js",
+    "shots": "node tools/preview.js --shot"
   },
   "devDependencies": {
+    "playwright": "^1.63.0",
     "who-growth-standards": "^1.0.1"
   }
 }

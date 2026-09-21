@@ -4,115 +4,340 @@
 <meta charset="utf-8">
 <title>우리 아이</title>
 <style>
+  /* ─────────────────────────────────────────────────────────────
+     iOS 디자인 시스템 토큰.
+     색·간격·둥글기·글자 크기를 Apple Human Interface Guidelines 의
+     시스템 값에 맞춘다. 임의의 색을 쓰지 않는 게 '애플 감성'의 8할이다.
+     ───────────────────────────────────────────────────────────── */
   :root{
-    --bg:#ffffff; --card:#ffffff; --line:#e3e6ea; --fg:#1f2328; --muted:#6a737d;
-    --accent:#1a73e8; --danger:#c5221f; --ok:#188038; --warn:#b06000;
-    --chip:#f1f3f4; --shadow:0 1px 2px rgba(0,0,0,.06);
+    /* 배경 — 그룹 리스트 화면 기준 */
+    --bg:#f2f2f7;             /* systemGroupedBackground */
+    --card:#ffffff;           /* secondarySystemGroupedBackground */
+    --fill:rgba(120,120,128,.12);   /* tertiarySystemFill */
+    --fill-2:rgba(120,120,128,.08);
+    /* 글자 */
+    --label:#000000;
+    --label-2:rgba(60,60,67,.6);    /* secondaryLabel */
+    --label-3:rgba(60,60,67,.3);    /* tertiaryLabel */
+    /* 구분선 — 항상 hairline */
+    --sep:rgba(60,60,67,.29);
+    /* 시스템 컬러 */
+    --blue:#007aff; --red:#ff3b30; --green:#34c759;
+    --orange:#ff9500; --gray:#8e8e93;
+    --seg-on:#ffffff;
+    --sheet:#f2f2f7;
+    --blur:saturate(180%) blur(20px);
+    --bar:rgba(249,249,249,.82);
+    --radius:10px;
   }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#16181c; --card:#1f2228; --line:#2f343c; --fg:#e6e9ef; --muted:#9aa4b2;
-           --accent:#6ea8fe; --danger:#ff6b63; --ok:#5dd47f; --warn:#e8a33d;
-           --chip:#282c34; --shadow:none; }
+    :root{
+      --bg:#000000; --card:#1c1c1e;
+      --fill:rgba(120,120,128,.24); --fill-2:rgba(120,120,128,.18);
+      --label:#ffffff; --label-2:rgba(235,235,245,.6); --label-3:rgba(235,235,245,.3);
+      --sep:rgba(84,84,88,.65);
+      --blue:#0a84ff; --red:#ff453a; --green:#30d158;
+      --orange:#ff9f0a; --gray:#8e8e93;
+      --seg-on:#636366;
+      --sheet:#1c1c1e;
+      --bar:rgba(30,30,30,.82);
+    }
   }
+
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{margin:0;background:var(--bg);color:var(--fg);
-       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-       padding-bottom:76px}
-  .wrap{max-width:560px;margin:0 auto;padding:0 16px}
-  header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
-         padding:10px 0 8px}
-  .hrow{display:flex;align-items:center;gap:10px}
-  .hrow select{flex:0 1 auto;font-size:16px;font-weight:600;background:transparent;color:var(--fg);
-               border:none;padding:4px 2px;max-width:45%}
-  .age{color:var(--muted);font-size:13px;flex:1}
-  .icon-btn{background:var(--chip);border:none;border-radius:8px;color:var(--fg);
-            padding:6px 10px;font-size:13px;cursor:pointer}
-  h2{font-size:15px;margin:22px 0 8px;display:flex;align-items:center;gap:6px}
-  h2 .n{color:var(--muted);font-weight:400;font-size:13px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-        padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow)}
-  .row{display:flex;align-items:center;gap:10px}
-  .grow{flex:1;min-width:0}
-  .title{font-weight:600}
-  .sub{color:var(--muted);font-size:13px;margin-top:2px}
-  .dday{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--chip);
-        white-space:nowrap}
-  .dday.red{background:rgba(197,34,31,.12);color:var(--danger)}
-  .dday.green{background:rgba(24,128,56,.12);color:var(--ok)}
-  .dday.warn{background:rgba(176,96,0,.14);color:var(--warn)}
-  button.act{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;
-             font-size:13px;font-weight:600;cursor:pointer}
-  button.ghost{background:var(--chip);color:var(--fg)}
-  button:disabled{opacity:.5}
-  nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);
-      display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
-  nav button{flex:1;background:none;border:none;color:var(--muted);padding:10px 0 12px;
-             font-size:11px;cursor:pointer;font-family:inherit}
-  nav button .ic{display:block;font-size:19px;margin-bottom:1px}
-  nav button.on{color:var(--accent)}
-  .empty{color:var(--muted);text-align:center;padding:28px 12px;font-size:14px}
-  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-  .metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;
-          text-align:center}
-  .metric .k{font-size:11px;color:var(--muted)}
-  .metric .v{font-size:17px;font-weight:700;margin-top:2px}
-  .metric .p{font-size:12px;color:var(--accent);font-weight:600}
-  .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
-  .quick button{background:var(--card);border:1px solid var(--line);border-radius:14px;
-                padding:16px 4px;font-size:12px;color:var(--fg);cursor:pointer;font-family:inherit}
-  .quick button .ic{display:block;font-size:24px;margin-bottom:4px}
-  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
-  input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;
-    background:var(--bg);color:var(--fg);font-size:16px;font-family:inherit}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-  .tabs{display:flex;gap:6px;margin:12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .tabs button{background:var(--chip);border:none;border-radius:999px;padding:7px 13px;font-size:13px;
-               color:var(--fg);white-space:nowrap;cursor:pointer;font-family:inherit}
-  .tabs button.on{background:var(--accent);color:#fff}
-  .banner{border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px}
-  .banner.warn{background:rgba(176,96,0,.14);color:var(--warn)}
-  .banner.err{background:rgba(197,34,31,.12);color:var(--danger)}
-  .banner.info{background:var(--chip);color:var(--muted)}
-  .done{opacity:.55}
-  .done .title{text-decoration:line-through}
-  .chart{width:100%;height:230px;display:block}
-  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
-  .foot{color:var(--muted);font-size:11px;text-align:center;padding:22px 12px 8px;line-height:1.7}
-  .foot a{color:var(--muted)}
-  dialog{border:none;border-radius:14px;padding:18px;max-width:420px;width:calc(100% - 32px);
-         background:var(--card);color:var(--fg)}
-  dialog::backdrop{background:rgba(0,0,0,.45)}
-  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);
-        border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--label);
+    font:17px/1.294 -apple-system,BlinkMacSystemFont,"SF Pro Text","Apple SD Gothic Neo",
+         "Pretendard","Malgun Gothic",sans-serif;
+    letter-spacing:-.022em;
+    padding-bottom:calc(50px + env(safe-area-inset-bottom) + 8px);
+    overscroll-behavior-y:none;
+  }
+  .wrap{max-width:560px;margin:0 auto}
+
+  /* ── 네비게이션 바 (라지 타이틀) ───────────────────── */
+  header{
+    position:sticky;top:0;z-index:20;
+    background:var(--bar);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    padding-top:env(safe-area-inset-top);
+    transition:box-shadow .2s;
+  }
+  header.scrolled{box-shadow:0 .5px 0 var(--sep)}
+  .navbar{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px}
+  .navbar .spacer{flex:1}
+  .nav-action{
+    background:none;border:none;color:var(--blue);font:17px/1 inherit;letter-spacing:-.022em;
+    padding:8px 0;cursor:pointer;font-family:inherit;
+  }
+  .nav-action:active{opacity:.35}
+  .large-title{padding:0 16px 8px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .large-title h1{
+    font-size:34px;line-height:41px;font-weight:700;letter-spacing:.37px;margin:0;
+  }
+  .large-title .sub{font-size:15px;color:var(--label-2);letter-spacing:-.01em}
+  /* 아이 전환 — 이름을 탭하면 열리는 네이티브 선택기 */
+  .kid-pick{position:relative;display:inline-flex;align-items:baseline}
+  .kid-pick select{
+    position:absolute;inset:0;width:100%;height:100%;opacity:0;
+    -webkit-appearance:none;appearance:none;border:none;font-size:16px;
+  }
+  .kid-pick .caret{font-size:17px;color:var(--label-3);margin-left:2px}
+
+  /* ── 섹션 헤더 ─────────────────────────────────────── */
+  .sec{
+    font-size:13px;line-height:18px;color:var(--label-2);font-weight:400;
+    letter-spacing:-.078px;margin:28px 16px 7px;display:flex;align-items:center;gap:6px;
+  }
+  .sec .n{color:var(--label-3)}
+  .sec:first-child{margin-top:16px}
+
+  /* ── 인셋 그룹 리스트 ──────────────────────────────── */
+  .list{
+    background:var(--card);border-radius:var(--radius);margin:0 16px 0;overflow:hidden;
+  }
+  .list + .sec{margin-top:28px}
+  .row{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 16px;min-height:44px;position:relative;
+    background:var(--card);
+  }
+  /* 헤어라인 구분선 — 마지막 행 제외, 왼쪽 들여쓰기 */
+  .row + .row::before{
+    content:'';position:absolute;left:16px;right:0;top:0;height:.5px;background:var(--sep);
+  }
+  .row.inset + .row::before{left:56px}
+  .row .main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .row .t{display:block;font-size:17px;line-height:22px}
+  .row .d{display:block;font-size:13px;line-height:18px;color:var(--label-2)}
+  .row .val{font-size:17px;color:var(--label-2);white-space:nowrap}
+  .row .chev{color:var(--label-3);font-size:17px;flex:none}
+  .row .emoji{font-size:24px;line-height:28px;width:28px;text-align:center;flex:none}
+  a.row,button.row{
+    width:100%;text-align:left;border:none;font-family:inherit;color:inherit;cursor:pointer;
+  }
+  a.row:active,button.row:active,.row.tappable:active{background:var(--fill-2)}
+  .row.done .t{color:var(--label-2)}
+
+  /* 상태 배지 */
+  .badge{
+    font-size:13px;font-weight:600;line-height:18px;padding:2px 8px;border-radius:999px;
+    background:var(--fill);color:var(--label-2);white-space:nowrap;flex:none;
+    letter-spacing:-.01em;
+  }
+  .badge.red{background:rgba(255,59,48,.14);color:var(--red)}
+  .badge.green{background:rgba(52,199,89,.16);color:var(--green)}
+  .badge.orange{background:rgba(255,149,0,.16);color:var(--orange)}
+
+  /* ── 버튼 ──────────────────────────────────────────── */
+  .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+    border:none;border-radius:12px;padding:14px 18px;cursor:pointer;
+    font:600 17px/22px inherit;letter-spacing:-.022em;font-family:inherit;
+    background:var(--blue);color:#fff;transition:opacity .12s,transform .12s;
+  }
+  .btn:active{opacity:.82;transform:scale(.98)}
+  .btn.tinted{background:var(--fill);color:var(--blue)}
+  .btn.plain{background:none;color:var(--blue);padding:14px 8px}
+  .btn.small{padding:7px 14px;font-size:15px;border-radius:999px}
+  .btn.wide{width:100%}
+  .btn:disabled{opacity:.4}
+  .btn-row{display:flex;gap:10px;margin:16px}
+
+  /* ── 세그먼티드 컨트롤 ─────────────────────────────── */
+  .seg{
+    display:flex;background:var(--fill);border-radius:9px;padding:2px;margin:12px 16px;
+    position:relative;
+  }
+  .seg button{
+    flex:1;border:none;background:none;border-radius:7px;padding:6px 8px;cursor:pointer;
+    font:500 13px/18px inherit;color:var(--label);font-family:inherit;letter-spacing:-.01em;
+    white-space:nowrap;transition:background .18s;
+  }
+  .seg button.on{
+    background:var(--seg-on);font-weight:600;
+    box-shadow:0 3px 8px rgba(0,0,0,.12),0 3px 1px rgba(0,0,0,.04);
+  }
+
+  /* ── 통계 타일 ─────────────────────────────────────── */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 16px}
+  .tile{background:var(--card);border-radius:var(--radius);padding:14px 10px;text-align:center}
+  .tile .k{font-size:13px;line-height:18px;color:var(--label-2)}
+  .tile .v{font-size:26px;line-height:32px;font-weight:600;letter-spacing:.35px;margin-top:2px}
+  .tile .v .u{font-size:13px;font-weight:400;color:var(--label-2);letter-spacing:0}
+  .tile .p{font-size:13px;line-height:18px;color:var(--blue);font-weight:600;margin-top:1px}
+
+  /* ── 빠른 기록 버튼 ────────────────────────────────── */
+  .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0 16px}
+  .quick button{
+    background:var(--card);border:none;border-radius:var(--radius);padding:16px 4px;
+    cursor:pointer;font:400 13px/18px inherit;color:var(--label);font-family:inherit;
+    transition:transform .12s,background .12s;
+  }
+  .quick button:active{background:var(--fill-2);transform:scale(.96)}
+  .quick button .ic{display:block;font-size:26px;line-height:30px;margin-bottom:4px}
+
+  /* ── 인라인 안내 ───────────────────────────────────── */
+  .note{
+    margin:0 16px;border-radius:var(--radius);padding:12px 14px;
+    font-size:15px;line-height:20px;background:var(--card);color:var(--label-2);
+  }
+  .note.warn{background:rgba(255,149,0,.14);color:var(--orange)}
+  .note.err{background:rgba(255,59,48,.12);color:var(--red)}
+  .note b{color:var(--label)}
+  .note.warn b,.note.err b{color:inherit}
+  .note a{color:var(--blue);text-decoration:none}
+
+  /* ── 폼 ────────────────────────────────────────────── */
+  .field{padding:11px 16px;position:relative;background:var(--card)}
+  .field + .field::before{
+    content:'';position:absolute;left:16px;right:0;top:0;height:.5px;background:var(--sep);
+  }
+  .field label{
+    display:block;font-size:13px;line-height:18px;color:var(--label-2);margin-bottom:2px;
+  }
+  .field .pair{display:flex;gap:12px}
+  .field .pair > div{flex:1;min-width:0}
+  input,select,textarea{
+    width:100%;border:none;background:none;color:var(--label);padding:0;
+    font:17px/22px inherit;font-family:inherit;letter-spacing:-.022em;
+    -webkit-appearance:none;appearance:none;
+  }
+  input[type=date],input[type=time]{min-height:22px}
+  input::placeholder{color:var(--label-3)}
+  input:focus,select:focus,textarea:focus{outline:none}
+  select{background:none}
+  /* iOS 스위치 — 네이티브 체크박스는 크기·색이 제각각이라 직접 그린다 */
+  .check,.field label.check,.row label.check{
+    display:flex;align-items:center;gap:12px;font-size:17px;line-height:22px;margin:0;
+  }
+  .check .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+  .check .txt .t{font-size:17px;line-height:22px}
+  .check .txt .d{font-size:13px;line-height:18px;color:var(--label-2)}
+  .switch{position:relative;width:51px;height:31px;flex:none}
+  .switch input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;z-index:2;
+                cursor:pointer;-webkit-appearance:none;appearance:none}
+  .switch .track{position:absolute;inset:0;border-radius:31px;background:var(--fill);
+                 transition:background .24s cubic-bezier(.32,.72,0,1)}
+  .switch .knob{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;
+                background:#fff;box-shadow:0 3px 8px rgba(0,0,0,.15),0 1px 1px rgba(0,0,0,.16);
+                transition:transform .24s cubic-bezier(.32,.72,0,1)}
+  .switch input:checked ~ .track{background:var(--green)}
+  .switch input:checked ~ .knob{transform:translateX(20px)}
+
+  /* ── 탭 바 ─────────────────────────────────────────── */
+  nav{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+    background:var(--bar);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    box-shadow:0 -.5px 0 var(--sep);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  nav button{
+    flex:1;background:none;border:none;color:var(--gray);cursor:pointer;
+    padding:6px 0 4px;font:500 10px/13px inherit;font-family:inherit;letter-spacing:.06px;
+  }
+  nav button .ic{display:block;margin:0 auto 2px;width:26px;height:26px}
+  nav button .ic svg{width:26px;height:26px;display:block}
+  nav button.on{color:var(--blue)}
+  nav button.on .ic svg{stroke-width:2.1}
+
+  /* ── 바텀 시트 ─────────────────────────────────────── */
+  dialog{
+    border:none;padding:0;margin:0;width:100%;height:100%;
+    /* 크로미움의 dialog:modal 기본값이 max-height:calc(100% - 6px - 2em) 라
+       그냥 두면 시트가 화면 바닥에서 40px 떠 있는다 */
+    max-width:100%;max-height:100%;
+    background:transparent;position:fixed;inset:0;
+    display:flex;align-items:flex-end;justify-content:center;
+  }
+  dialog:not([open]){display:none}
+  dialog::backdrop{background:rgba(0,0,0,.4);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .sheet{
+    width:100%;max-width:560px;background:var(--sheet);border-radius:14px 14px 0 0;
+    padding:8px 0 calc(16px + env(safe-area-inset-bottom));
+    max-height:88vh;overflow-y:auto;
+    animation:rise .32s cubic-bezier(.32,.72,0,1);
+  }
+  @keyframes rise{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .grabber{width:36px;height:5px;border-radius:3px;background:var(--label-3);margin:0 auto 10px}
+  .sheet h3{font-size:17px;font-weight:600;text-align:center;margin:0 16px 14px}
+
+  /* ── 그래프 ────────────────────────────────────────── */
+  .chart-card{background:var(--card);border-radius:var(--radius);margin:0 16px;padding:12px 6px 4px}
+  .chart{width:100%;height:240px;display:block}
+  .legend{
+    display:flex;gap:14px;justify-content:center;font-size:13px;color:var(--label-2);
+    padding:6px 10px 8px;
+  }
+  .legend i{display:inline-block;width:14px;height:2px;border-radius:2px;
+            background:var(--blue);vertical-align:middle;margin-right:5px}
+  .legend .band i{background:var(--label-3);height:0;border-top:1.5px dashed var(--label-3)}
+
+  /* ── 기타 ──────────────────────────────────────────── */
+  .empty{color:var(--label-2);text-align:center;padding:56px 24px;font-size:15px;line-height:22px}
+  .foot{color:var(--label-3);font-size:12px;line-height:18px;text-align:center;
+        padding:28px 24px 12px}
+  .foot a{color:var(--label-2)}
+  .spin{
+    display:inline-block;width:20px;height:20px;border:2px solid var(--fill);
+    border-top-color:var(--label-3);border-radius:50%;animation:sp .8s linear infinite;
+  }
   @keyframes sp{to{transform:rotate(360deg)}}
-  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:86px;background:#1f2328;color:#fff;
-         padding:10px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;
-         pointer-events:none;max-width:90%}
-  .toast.on{opacity:.95}
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%) translateY(8px);
+    bottom:calc(60px + env(safe-area-inset-bottom));
+    background:rgba(28,28,30,.92);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+    color:#fff;padding:11px 18px;border-radius:999px;font-size:15px;font-weight:500;
+    z-index:60;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;max-width:88%;
+  }
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media (prefers-reduced-motion:reduce){
+    *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="wrap hrow">
-    <select id="childSel" onchange="switchChild(this.value)"></select>
-    <span class="age" id="ageLabel"></span>
-    <button class="icon-btn" onclick="openChildForm()">아이 설정</button>
+<header id="hdr">
+  <div class="wrap">
+    <div class="navbar">
+      <span class="spacer"></span>
+      <button class="nav-action" onclick="openChildForm()">아이 설정</button>
+    </div>
+    <div class="large-title">
+      <span class="kid-pick">
+        <h1 id="kidName">우리 아이</h1>
+        <select id="childSel" onchange="switchChild(this.value)" aria-label="아이 선택"></select>
+      </span>
+      <span class="caret" id="kidCaret"></span>
+      <span class="sub" id="ageLabel"></span>
+    </div>
   </div>
 </header>
 
 <main class="wrap" id="view"><div class="empty"><span class="spin"></span></div></main>
 
 <nav>
-  <button id="nav-today"  class="on" onclick="go('today')"><span class="ic">🏠</span>오늘</button>
-  <button id="nav-growth"          onclick="go('growth')"><span class="ic">📈</span>성장</button>
-  <button id="nav-sched"           onclick="go('sched')"><span class="ic">💉</span>일정</button>
-  <button id="nav-log"             onclick="go('log')"><span class="ic">📝</span>기록</button>
+  <button id="nav-today" class="on" onclick="go('today')"><span class="ic"><svg viewBox="0 0 26 26"
+    fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="M4 11.2 13 4l9 7.2"/><path d="M6.3 10.2V20a1.5 1.5 0 0 0 1.5 1.5h10.4a1.5
+    1.5 0 0 0 1.5-1.5v-9.8"/><path d="M10.6 21.5v-5.6h4.8v5.6"/></svg></span>오늘</button>
+  <button id="nav-growth" onclick="go('growth')"><span class="ic"><svg viewBox="0 0 26 26"
+    fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="M4 21.2h18"/><path d="M4 21.2V4.8"/><path d="M7.2 16.6l4.2-4.8 3.3 2.9
+    5.1-6.4"/><circle cx="11.4" cy="11.8" r="1.5" fill="currentColor" stroke="none"/></svg></span>성장</button>
+  <button id="nav-sched" onclick="go('sched')"><span class="ic"><svg viewBox="0 0 26 26"
+    fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><rect x="3.8" y="5.4" width="18.4" height="16.4" rx="3.2"/><path d="M3.8 10.3h18.4"/>
+    <path d="M8.6 3.2v4"/><path d="M17.4 3.2v4"/><path d="M9.3 15.6l2.6 2.6 5-5"/></svg></span>일정</button>
+  <button id="nav-log" onclick="go('log')"><span class="ic"><svg viewBox="0 0 26 26"
+    fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true"><path d="M20.4 13.6V19a2.8 2.8 0 0 1-2.8 2.8H7A2.8 2.8 0 0 1 4.2 19V8.4A2.8 2.8 0
+    0 1 7 5.6h5.4"/><path d="M17.3 4.5a2.1 2.1 0 0 1 3 3l-7.4 7.4-3.7.7.7-3.7z"/></svg></span>기록</button>
 </nav>
 
-<div class="toast" id="toast"></div>
-<dialog id="dlg"><div id="dlgBody"></div></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<dialog id="dlg"><div class="sheet" id="dlgBody"></div></dialog>
 
 <script>
 /* ── 서버 호출 ────────────────────────────────────────── */
@@ -148,19 +373,75 @@ call('bootstrap').then(function(d){
 }).catch(fail);
 
 function renderChildSelect(){
-  $('childSel').innerHTML = S.children.map(function(c){
-    return '<option value="'+esc(c.id)+'"'+(c.id===S.childId?' selected':'')+'>'+esc(c.name)+'</option>';
+  var c = S.children.filter(function(x){ return x.id===S.childId; })[0] || S.children[0] || {};
+  $('kidName').textContent = c.name || '우리 아이';
+  $('kidCaret').textContent = S.children.length > 1 ? '⌄' : '';
+  $('childSel').innerHTML = S.children.map(function(k){
+    return '<option value="'+esc(k.id)+'"'+(k.id===S.childId?' selected':'')+'>'+esc(k.name)+'</option>';
   }).join('');
+  $('childSel').style.display = S.children.length > 1 ? 'block' : 'none';
 }
 function switchChild(id){ S.childId = id; localStorage.setItem('childId', id); S.cache = {}; go(S.tab); }
 
 function go(tab){
   S.tab = tab;
   ['today','growth','sched','log'].forEach(function(t){
-    var b = $('nav-'+(t==='sched'?'sched':t)); if(b) b.classList.toggle('on', t===tab);
+    var b = $('nav-'+t); if(b) b.classList.toggle('on', t===tab);
   });
+  window.scrollTo(0,0);
   busy();
   ({ today: renderToday, growth: renderGrowth, sched: renderSched, log: renderLog })[tab]();
+}
+
+/* 스크롤하면 네비게이션 바에 헤어라인이 생긴다 (iOS 기본 동작) */
+window.addEventListener('scroll', function(){
+  $('hdr').classList.toggle('scrolled', window.scrollY > 4);
+}, { passive:true });
+
+/* ── 공통 조각 ───────────────────────────────────────── */
+function sec(title, count){
+  return '<div class="sec">'+esc(title)+(count!=null?' <span class="n">'+count+'</span>':'')+'</div>';
+}
+function list(rows){ return rows.length ? '<div class="list">'+rows.join('')+'</div>' : ''; }
+
+/** 일정 한 줄 — 탭하면 완료 처리 시트가 열린다 */
+function itemRow(it){
+  if(it.needsChoice) return choiceRow(it);
+  var tone = it.alert ? 'red' : it.status==='open' ? 'green' : '';
+  var meta = it.advisory ? esc(it.note)
+           : esc(it.start)+' ~ '+esc(it.end)+(it.shifted?' · 앞 차수 지연 반영':'');
+  return '<button class="row" onclick="markDone(\''+esc(it.key)+'\',\''+esc(it.name)+'\')">'+
+    '<span class="main"><span class="t">'+esc(it.name)+
+      (it.dose?' <span style="color:var(--label-2)">'+it.dose+
+        (it.totalDoses?'/'+it.totalDoses:'')+'차</span>':'')+'</span>'+
+    '<span class="d">'+meta+'</span></span>'+
+    (it.dday?'<span class="badge '+tone+'">'+esc(it.dday)+'</span>':'')+
+    '<span class="chev">›</span></button>';
+}
+
+function doneRow(it){
+  return '<div class="row done tappable" onclick="undo(\''+esc(it.key)+'\')">'+
+    '<span class="main"><span class="t">'+esc(it.name)+
+      (it.dose?' '+it.dose+'차':'')+'</span>'+
+    '<span class="d">'+esc(it.doneDate)+' 완료</span></span>'+
+    '<span class="badge green">✓</span></div>';
+}
+
+function choiceRow(it){
+  var series = it.code==='RV' ? 'rota' : 'je';
+  return '<div class="row"><span class="main">'+
+    '<span class="t">'+esc(it.name)+' 종류 선택</span>'+
+    '<span class="d">'+esc(it.note)+'</span>'+
+    '<span style="display:flex;gap:8px;margin-top:10px">'+
+      it.choices.map(function(c){
+        return '<button class="btn tinted small" onclick="pickVaccine(\''+series+'\',\''+esc(c.key)+'\')">'+
+               esc(c.label)+'</button>';
+      }).join('')+
+    '</span></span></div>';
+}
+
+function field(label, inner){
+  return '<div class="field"><label>'+esc(label)+'</label>'+inner+'</div>';
 }
 
 /* ── 오늘 ────────────────────────────────────────────── */
@@ -170,107 +451,90 @@ function renderToday(){
     var h = '';
 
     if(d.growth){
-      h += '<div class="metrics">';
+      h += '<div class="tiles">';
       ['lhfa','wfa','hcfa'].forEach(function(k){
         var m = d.growth.metrics[k]; if(!m) return;
-        h += '<div class="metric"><div class="k">'+esc(m.label)+'</div>'+
-             '<div class="v">'+esc(m.value)+'<span class="n" style="font-size:11px">'+esc(m.unit)+'</span></div>'+
+        h += '<div class="tile"><div class="k">'+esc(m.label)+'</div>'+
+             '<div class="v">'+esc(m.value)+'<span class="u">'+esc(m.unit)+'</span></div>'+
              '<div class="p">'+esc(m.text)+'</div></div>';
       });
       h += '</div>';
       d.growth.trends.forEach(function(t){
-        h += '<div class="banner '+(t.trend==='down'?'warn':'info')+'">'+esc(t.message)+'</div>';
+        h += '<div style="margin-top:10px"><div class="note '+(t.trend==='down'?'warn':'')+'">'+
+             esc(t.message)+'</div></div>';
       });
     } else {
-      h += '<div class="banner info">키·몸무게를 입력하면 백분위가 계산됩니다. '+
-           '<a href="#" onclick="go(\'growth\');return false">성장 탭으로</a></div>';
+      h += '<div class="note">키·몸무게를 입력하면 백분위가 계산됩니다. '+
+           '<a href="#" onclick="go(\'growth\');return false">성장 탭으로 →</a></div>';
     }
 
-    h += group('지났습니다', d.overdue, 'red');
-    h += group('지금 하실 수 있습니다', d.open, 'green');
-    h += group('곧 시작됩니다', d.soon, '');
+    if(d.overdue.length) h += sec('지났습니다', d.overdue.length) + list(d.overdue.map(itemRow));
+    if(d.open.length)    h += sec('지금 하실 수 있습니다', d.open.length) + list(d.open.map(itemRow));
+    if(d.soon.length)    h += sec('곧 시작됩니다', d.soon.length) + list(d.soon.map(itemRow));
 
     if(d.foodWatch && d.foodWatch.length){
-      h += '<h2>새 재료 관찰 중 <span class="n">'+d.foodWatch.length+'</span></h2>';
-      d.foodWatch.forEach(function(f){
-        h += '<div class="card row"><span style="font-size:20px">🥣</span>'+
-          '<div class="grow"><div class="title">'+esc(f.food)+'</div>'+
-          '<div class="sub">'+esc(f.startedOn)+' 처음 · '+f.dayNo+'일째 / '+f.totalDays+'일</div></div>'+
-          '<span class="dday'+(f.dayNo>=f.totalDays?' green':'')+'">'+
-          (f.dayNo>=f.totalDays?'관찰 끝':'D+'+(f.dayNo-1))+'</span></div>';
-      });
+      h += sec('새 재료 관찰 중', d.foodWatch.length);
+      h += list(d.foodWatch.map(function(f){
+        return '<div class="row"><span class="emoji">🥣</span>'+
+          '<span class="main"><span class="t">'+esc(f.food)+'</span>'+
+          '<span class="d">'+esc(f.startedOn)+' 처음 먹임</span></span>'+
+          '<span class="badge'+(f.dayNo>=f.totalDays?' green':'')+'">'+
+          (f.dayNo>=f.totalDays?'관찰 끝':f.dayNo+'일째')+'</span></div>';
+      }));
     }
-    h += '<h2>오늘 <span class="n">'+esc(d.todaySummary.entryCount)+'건 기록</span></h2>';
-    h += '<div class="card">' + summaryLine(d.todaySummary) + '</div>';
 
-    h += '<h2>할 일 <span class="n">'+d.todos.length+'</span></h2>';
-    if(!d.todos.length) h += '<div class="card sub">직접 추가한 할 일이 없습니다</div>';
-    d.todos.forEach(function(t){
-      h += '<div class="card row"><div class="grow"><div class="title">'+esc(t.title)+'</div>'+
-           '<div class="sub">'+esc(t.category||'')+(t.due?' · '+esc(t.due):'')+
-           (t.owner?' · '+esc(t.owner):'')+'</div></div>'+
-           '<button class="act ghost" onclick="todoDone(\''+esc(t.id)+'\')">완료</button></div>';
+    h += sec('오늘') + '<div class="list"><div class="row"><span class="main">'+
+         summaryLine(d.todaySummary)+'</span></div></div>';
+
+    h += sec('할 일', d.todos.length || null);
+    var todoRows = d.todos.map(function(t){
+      return '<div class="row tappable" onclick="todoDone(\''+esc(t.id)+'\')">'+
+        '<span class="main"><span class="t">'+esc(t.title)+'</span>'+
+        '<span class="d">'+esc(t.category||'')+(t.due?' · '+esc(t.due):'')+
+        (t.owner?' · '+esc(t.owner):'')+'</span></span>'+
+        '<span class="badge">완료</span></div>';
     });
-    h += '<div class="card"><div class="row" style="gap:8px">'+
-         '<input id="todoTitle" placeholder="할 일 추가 (예: 어린이집 준비물)" style="flex:1">'+
-         '<button class="act" onclick="todoAdd()">추가</button></div>'+
-         '<div class="grid2" style="margin-top:8px">'+
-         '<input id="todoDue" type="date" placeholder="기한">'+
-         '<select id="todoOwner"><option value="">담당 없음</option><option>아빠</option><option>엄마</option></select>'+
-         '</div></div>';
+    todoRows.push('<button class="row" onclick="openTodoSheet()">'+
+      '<span class="main"><span class="t" style="color:var(--blue)">할 일 추가</span></span>'+
+      '<span class="chev">›</span></button>');
+    h += list(todoRows);
 
     h += footNote();
     view(h);
   }).catch(fail);
 }
 
-function group(title, items, tone){
-  if(!items.length) return '';
-  var h = '<h2>'+esc(title)+' <span class="n">'+items.length+'</span></h2>';
-  items.forEach(function(it){ h += itemCard(it, tone); });
-  return h;
-}
-
-function itemCard(it, tone){
-  if(it.needsChoice) return choiceCard(it);
-  var cls = it.alert ? 'red' : (tone||'');
-  return '<div class="card row"><div class="grow">'+
-    '<div class="title">'+esc(it.name)+(it.dose?' <span class="n">'+it.dose+'/'+(it.totalDoses||it.dose)+'차</span>':'')+'</div>'+
-    '<div class="sub">'+esc(it.start)+' ~ '+esc(it.end)+
-      (it.shifted?' · 앞 차수 지연 반영':'')+(it.note?' · '+esc(it.note):'')+'</div></div>'+
-    '<span class="dday '+cls+'">'+esc(it.dday)+'</span>'+
-    '<button class="act ghost" onclick="markDone(\''+esc(it.key)+'\',\''+esc(it.name)+'\')">완료</button></div>';
-}
-
-function choiceCard(it){
-  return '<div class="card"><div class="title">'+esc(it.name)+' 종류 선택</div>'+
-    '<div class="sub">'+esc(it.note)+'</div><div class="tabs">'+
-    it.choices.map(function(c){
-      var series = it.code==='RV' ? 'rota' : 'je';
-      return '<button onclick="pickVaccine(\''+series+'\',\''+esc(c.key)+'\')">'+esc(c.label)+'</button>';
-    }).join('')+'</div></div>';
-}
-
 function summaryLine(s){
   var parts = [];
-  parts.push(s.lastFeed ? '마지막 수유/식사 <b>'+esc(s.lastFeed.at)+'</b>'+
+  parts.push(s.lastFeed ? '마지막 수유/이유식 <b>'+esc(s.lastFeed.at)+'</b>'+
              (s.lastFeed.detail?' ('+esc(s.lastFeed.detail)+')':'')+
-             (s.lastFeed.by?' · '+esc(s.lastFeed.by):'') : '수유/식사 기록 없음');
+             (s.lastFeed.by?' · '+esc(s.lastFeed.by):'') : '수유/이유식 기록 없음');
   if(s.sleepMinutes) parts.push('수면 <b>'+Math.floor(s.sleepMinutes/60)+'시간 '+(s.sleepMinutes%60)+'분</b>');
   if(s.poopCount) parts.push('배변 <b>'+s.poopCount+'회</b>');
   if(s.lastTemp) parts.push('체온 <b>'+esc(s.lastTemp.value)+'</b> ('+esc(s.lastTemp.at)+')');
   if(s.medCount) parts.push('투약 <b>'+s.medCount+'회</b>');
-  var h = '<div class="sub" style="font-size:14px;color:var(--fg)">'+parts.join(' · ')+'</div>';
-  if(s.memo) h += '<div class="sub" style="margin-top:6px">💬 '+esc(s.memo)+'</div>';
+  var h = '<span class="t" style="line-height:24px">'+parts.join(' · ')+'</span>';
+  if(s.memo) h += '<span class="d" style="margin-top:6px">💬 '+esc(s.memo)+'</span>';
   return h;
 }
 
+function openTodoSheet(){
+  sheet('할 일 추가',
+    '<div class="list">'+
+      field('할 일', '<input id="todoTitle" placeholder="예: 어린이집 준비물" autofocus>')+
+      field('기한', '<input id="todoDue" type="date">')+
+      field('담당', '<select id="todoOwner"><option value="">없음</option>'+
+                    '<option>아빠</option><option>엄마</option></select>')+
+    '</div>',
+    '할 일 추가', 'todoAdd()');
+}
 function todoAdd(){
   var title = $('todoTitle').value.trim();
-  if(!title) return toast('제목을 입력해 주세요');
+  if(!title) return toast('할 일을 입력해 주세요');
   call('todoAdd', { childId: S.childId, title: title, due: $('todoDue').value,
                     owner: $('todoOwner').value })
-    .then(function(){ toast('추가했습니다'); go('today'); }).catch(function(e){ toast(e.message); });
+    .then(function(){ closeDialog(); toast('추가했습니다'); go('today'); })
+    .catch(function(e){ toast(e.message); });
 }
 function todoDone(id){
   call('todoDone', { id: id }).then(function(){ toast('완료'); go('today'); })
@@ -281,78 +545,97 @@ function pickVaccine(series, choice){
     .then(function(){ toast('일정을 계산했습니다'); go(S.tab); }).catch(function(e){ toast(e.message); });
 }
 
-/* ── 완료 체크 다이얼로그 ─────────────────────────────── */
+/* ── 바텀 시트 ───────────────────────────────────────── */
+function sheet(title, body, okLabel, okCall){
+  $('dlgBody').innerHTML = '<div class="grabber"></div><h3>'+esc(title)+'</h3>'+body+
+    '<div class="btn-row">'+
+    '<button class="btn tinted" style="flex:1" onclick="closeDialog()">취소</button>'+
+    '<button class="btn" style="flex:2" onclick="'+okCall+'">'+esc(okLabel)+'</button></div>';
+  $('dlg').showModal();
+}
+function closeDialog(){ $('dlg').close(); }
+
 function markDone(key, name){
-  openDialog('<div class="title">'+esc(name)+'</div>'+
-    '<label>완료일</label><input id="dDate" type="date" value="'+S.today+'">'+
-    '<label>기관 (선택)</label><input id="dPlace" placeholder="예: OO소아과">'+
-    '<div class="row" style="margin-top:14px;gap:8px">'+
-    '<button class="act ghost grow" onclick="closeDialog()">취소</button>'+
-    '<button class="act grow" onclick="submitDone(\''+esc(key)+'\')">완료 기록</button></div>');
+  sheet(name,
+    '<div class="list">'+
+      field('완료일', '<input id="dDate" type="date" value="'+S.today+'">')+
+      field('기관 (선택)', '<input id="dPlace" placeholder="예: OO소아과">')+
+    '</div>',
+    '완료 기록', 'submitDone(\'' + key.replace(/'/g,"\\'") + '\')');
 }
 function submitDone(key){
   call('scheduleDone', { childId: S.childId, key: key, date: $('dDate').value, place: $('dPlace').value })
     .then(function(){ closeDialog(); toast('기록했습니다'); go(S.tab); })
     .catch(function(e){ toast(e.message); });
 }
-function openDialog(html){ $('dlgBody').innerHTML = html; $('dlg').showModal(); }
-function closeDialog(){ $('dlg').close(); }
 
 /* ── 성장 ────────────────────────────────────────────── */
 var GIND = 'wfa';
+var GLABEL = { wfa:'몸무게', lhfa:'키', hcfa:'머리둘레', bfa:'BMI' };
 function renderGrowth(){
   Promise.all([ call('growth', { childId: S.childId }),
                 call('growthChart', { childId: S.childId, indicator: GIND }) ])
   .then(function(r){
     var d = r[0], ch = r[1];
-    var h = '';
-    h += '<div class="card"><div class="title">새 측정 입력</div>'+
-      '<label>측정일</label><input id="gDate" type="date" value="'+S.today+'">'+
-      '<div class="grid3">'+
-      '<div><label>키 (cm)</label><input id="gH" type="number" step="0.1" inputmode="decimal"></div>'+
-      '<div><label>몸무게 (kg)</label><input id="gW" type="number" step="0.01" inputmode="decimal"></div>'+
-      '<div><label>머리둘레 (cm)</label><input id="gC" type="number" step="0.1" inputmode="decimal"></div>'+
-      '</div><button class="act" style="width:100%;margin-top:12px" onclick="growthAdd()">기록하기</button></div>';
-
-    h += '<div class="tabs">'+
-      [['wfa','몸무게'],['lhfa','키'],['hcfa','머리둘레'],['bfa','BMI']].map(function(p){
-        return '<button class="'+(GIND===p[0]?'on':'')+'" onclick="setGInd(\''+p[0]+'\')">'+p[1]+'</button>';
+    var h = '<div class="seg">'+
+      ['wfa','lhfa','hcfa','bfa'].map(function(k){
+        return '<button class="'+(GIND===k?'on':'')+'" onclick="setGInd(\''+k+'\')">'+GLABEL[k]+'</button>';
       }).join('')+'</div>';
 
-    for(var k in d.trends){
-      if(k!==GIND) continue;
-      var t = d.trends[k];
-      h += '<div class="banner '+(t.trend==='down'?'warn':'info')+'">'+esc(t.message)+'</div>';
-    }
-    h += '<div class="card">'+chartSvg(ch)+
-      '<div class="legend"><span>— 우리 아이</span><span style="color:var(--muted)">… 3·15·50·85·97 백분위</span></div></div>';
+    h += '<div class="chart-card">'+chartSvg(ch)+
+      '<div class="legend"><span><i></i>우리 아이</span>'+
+      '<span class="band"><i></i>3 · 15 · 50 · 85 · 97 백분위</span></div></div>';
 
-    h += '<h2>기록 <span class="n">'+d.rows.length+'</span></h2>';
-    if(!d.rows.length) h += '<div class="empty">아직 기록이 없습니다</div>';
-    d.rows.slice().reverse().forEach(function(r){
-      var m = r.metrics, bits = [];
-      if(r.heightCm) bits.push('키 '+r.heightCm+'cm'+(m.lhfa?' ('+m.lhfa.text+')':''));
-      if(r.weightKg) bits.push('몸무게 '+r.weightKg+'kg'+(m.wfa?' ('+m.wfa.text+')':''));
-      if(r.headCm) bits.push('머리 '+r.headCm+'cm'+(m.hcfa?' ('+m.hcfa.text+')':''));
-      h += '<div class="card row"><div class="grow"><div class="title">'+esc(r.date)+
-        ' <span class="n">'+esc(r.ageLabel)+'</span></div>'+
-        '<div class="sub">'+esc(bits.join(' · '))+'</div>'+
-        (r.memo?'<div class="sub">'+esc(r.memo)+'</div>':'')+'</div>'+
-        '<button class="act ghost" onclick="growthDel(\''+esc(r.id)+'\')">삭제</button></div>';
-    });
+    var t = d.trends[GIND];
+    if(t) h += '<div style="margin-top:12px"><div class="note '+(t.trend==='down'?'warn':'')+'">'+
+               esc(t.message)+'</div></div>';
+
+    h += '<div class="btn-row"><button class="btn wide" onclick="openGrowthSheet()">측정 기록하기</button></div>';
+
+    h += sec('기록', d.rows.length);
+    if(!d.rows.length){
+      h += '<div class="empty">아직 기록이 없습니다.<br>키·몸무게를 넣으면 백분위가 바로 계산됩니다.</div>';
+    } else {
+      h += list(d.rows.slice().reverse().map(function(x){
+        var m = x.metrics, bits = [];
+        if(x.heightCm) bits.push('키 '+x.heightCm+(m.lhfa?' · '+m.lhfa.text:''));
+        if(x.weightKg) bits.push('몸무게 '+x.weightKg+(m.wfa?' · '+m.wfa.text:''));
+        if(x.headCm) bits.push('머리 '+x.headCm+(m.hcfa?' · '+m.hcfa.text:''));
+        return '<div class="row tappable" onclick="growthDel(\''+esc(x.id)+'\')">'+
+          '<span class="main"><span class="t">'+esc(x.date)+
+          ' <span style="color:var(--label-2);font-size:15px">'+esc(x.ageLabel)+'</span></span>'+
+          '<span class="d">'+esc(bits.join('  '))+'</span></span>'+
+          '<span class="chev">›</span></div>';
+      }));
+      h += '<div class="foot" style="padding-top:10px">기록을 탭하면 삭제할 수 있습니다</div>';
+    }
     h += footNote();
     view(h);
   }).catch(fail);
 }
 function setGInd(i){ GIND = i; go('growth'); }
 
+function openGrowthSheet(){
+  sheet('측정 기록',
+    '<div class="list">'+
+      field('측정일', '<input id="gDate" type="date" value="'+S.today+'">')+
+      '<div class="field"><div class="pair">'+
+        '<div><label>키 (cm)</label><input id="gH" type="number" step="0.1" inputmode="decimal" placeholder="—"></div>'+
+        '<div><label>몸무게 (kg)</label><input id="gW" type="number" step="0.01" inputmode="decimal" placeholder="—"></div>'+
+      '</div></div>'+
+      field('머리둘레 (cm)', '<input id="gC" type="number" step="0.1" inputmode="decimal" placeholder="— 36개월 미만만">')+
+      field('메모 (선택)', '<input id="gM" placeholder="예: 소아과에서 측정">')+
+    '</div>', '기록하기', 'growthAdd()');
+}
 function growthAdd(){
   call('growthAdd', { childId: S.childId, date: $('gDate').value,
-                      heightCm: $('gH').value, weightKg: $('gW').value, headCm: $('gC').value })
+                      heightCm: $('gH').value, weightKg: $('gW').value,
+                      headCm: $('gC').value, memo: $('gM').value })
     .then(function(r){
       var m = r.evaluated.metrics, msg = [];
       if(m.lhfa) msg.push('키 '+Math.round(m.lhfa.percentile)+'p');
       if(m.wfa) msg.push('몸무게 '+Math.round(m.wfa.percentile)+'p');
+      closeDialog();
       toast(msg.length ? msg.join(' · ') : '기록했습니다');
       go('growth');
     }).catch(function(e){ toast(e.message); });
@@ -363,58 +646,60 @@ function growthDel(id){
     .catch(function(e){ toast(e.message); });
 }
 
-/** 백분위 밴드 + 우리 아이 곡선 (외부 라이브러리 없이 SVG 직접 생성) */
+/** 백분위 밴드 + 우리 아이 곡선. 외부 라이브러리 없이 SVG 직접 생성 */
 function chartSvg(ch){
-  var W = 520, H = 230, P = { l: 34, r: 8, t: 10, b: 22 };
-  var xs = [], ys = [];
-  ch.bands.forEach(function(b){ b.points.forEach(function(p){ xs.push(p.x); ys.push(p.y); }); });
-  ch.points.forEach(function(p){ xs.push(p.x); ys.push(p.y); });
+  var W = 520, H = 240, P = { l: 36, r: 14, t: 12, b: 24 };
+  var ys = [];
+  ch.bands.forEach(function(b){ b.points.forEach(function(p){ ys.push(p.y); }); });
+  ch.points.forEach(function(p){ ys.push(p.y); });
   if(!ys.length) return '<div class="empty">표시할 데이터가 없습니다</div>';
 
-  var x0 = 0, x1 = ch.maxDays || Math.max.apply(null, xs);
+  var x0 = 0, x1 = ch.maxDays;
   var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
-  var pad = (y1 - y0) * 0.06 || 1; y0 -= pad; y1 += pad;
+  var pad = (y1 - y0) * 0.08 || 1; y0 -= pad; y1 += pad;
   var X = function(v){ return P.l + (v - x0) / (x1 - x0 || 1) * (W - P.l - P.r); };
   var Y = function(v){ return H - P.b - (v - y0) / (y1 - y0 || 1) * (H - P.t - P.b); };
+  var path = function(pts){ return 'M'+pts.map(function(p){
+    return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L'); };
 
   var svg = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" '+
             'aria-label="'+esc(ch.label)+' 백분위 그래프">';
 
   // 3~97 백분위 사이를 옅게 채운다
   var lo = ch.bands[0].points, hi = ch.bands[4].points;
-  svg += '<path d="M'+lo.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
-         'L'+hi.slice().reverse().map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
-         'Z" fill="currentColor" opacity=".06"/>';
+  svg += '<path d="'+path(lo)+'L'+hi.slice().reverse().map(function(p){
+           return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
+         'Z" fill="var(--blue)" opacity=".06"/>';
 
   ch.bands.forEach(function(b){
-    var d = 'M'+b.points.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L');
     var mid = b.percentile === 50;
-    svg += '<path d="'+d+'" fill="none" stroke="currentColor" opacity="'+(mid?'.45':'.22')+
-           '" stroke-width="'+(mid?1.3:1)+'" stroke-dasharray="'+(mid?'':'3 3')+'"/>';
+    svg += '<path d="'+path(b.points)+'" fill="none" stroke="currentColor" '+
+           'opacity="'+(mid?'.32':'.16')+'" stroke-width="1" '+
+           'stroke-dasharray="'+(mid?'':'2 4')+'" stroke-linecap="round"/>';
     var last = b.points[b.points.length-1];
-    svg += '<text x="'+(X(last.x)-2)+'" y="'+(Y(last.y)-3)+'" font-size="9" fill="currentColor" '+
-           'opacity=".5" text-anchor="end">'+b.percentile+'</text>';
+    svg += '<text x="'+(X(last.x)+3)+'" y="'+(Y(last.y)+3)+'" font-size="9" '+
+           'fill="currentColor" opacity=".35">'+b.percentile+'</text>';
   });
 
-  // y 축 눈금
   for(var i=0;i<=3;i++){
     var v = y0 + (y1-y0)*i/3;
-    svg += '<text x="4" y="'+(Y(v)+3)+'" font-size="9" fill="currentColor" opacity=".55">'+
+    svg += '<text x="4" y="'+(Y(v)+3.5)+'" font-size="10" fill="currentColor" opacity=".35">'+
            v.toFixed(v<20?1:0)+'</text>';
   }
-  // x 축 (개월)
   var months = x1/30.44, stepM = months<=8?2:months<=20?4:months<=40?6:12;
   for(var mth=0; mth<=months; mth+=stepM){
-    var px = X(mth*30.44);
-    svg += '<text x="'+px+'" y="'+(H-6)+'" font-size="9" fill="currentColor" opacity=".55" '+
-           'text-anchor="middle">'+mth+'개월</text>';
+    svg += '<text x="'+X(mth*30.44)+'" y="'+(H-7)+'" font-size="10" fill="currentColor" '+
+           'opacity=".35" text-anchor="middle">'+mth+'</text>';
   }
+  svg += '<text x="'+(W-P.r)+'" y="'+(H-7)+'" font-size="10" fill="currentColor" '+
+         'opacity=".35" text-anchor="end">개월</text>';
 
   if(ch.points.length){
-    svg += '<path d="M'+ch.points.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
-           '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    svg += '<path d="'+path(ch.points)+'" fill="none" stroke="var(--blue)" stroke-width="2.5" '+
+           'stroke-linejoin="round" stroke-linecap="round"/>';
     ch.points.forEach(function(p){
-      svg += '<circle cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="3.2" fill="var(--accent)">'+
+      svg += '<circle cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="4" '+
+             'fill="var(--card)" stroke="var(--blue)" stroke-width="2.5">'+
              '<title>'+esc(p.date)+' · '+p.y+' · '+Math.round(p.percentile)+'p</title></circle>';
     });
   }
@@ -425,18 +710,18 @@ function chartSvg(ch){
 var SFILTER = 'todo';
 function renderSched(){
   call('schedule', { childId: S.childId }).then(function(d){
-    var h = '<div class="tabs">'+
-      [['todo','남은 것'],['all','전체'],['done','완료']].map(function(p){
-        return '<button class="'+(SFILTER===p[0]?'on':'')+'" onclick="setSF(\''+p[0]+'\')">'+p[1]+'</button>';
+    var h = '<div class="seg">'+
+      [['todo','남은 것'],['all','전체'],['done','완료']].map(function(x){
+        return '<button class="'+(SFILTER===x[0]?'on':'')+'" onclick="setSF(\''+x[0]+'\')">'+x[1]+'</button>';
       }).join('')+'</div>';
 
     var past = d.items.filter(function(x){ return !x.doneDate && !x.needsChoice && !x.advisory &&
                                                   (x.status==='overdue' || x.status==='open'); });
     if(past.length >= 5){
-      h += '<div class="card"><div class="title">이미 하신 게 있나요?</div>'+
-        '<div class="sub">'+past.length+'개 항목이 기한이 지났거나 진행 중입니다. '+
-        '아기수첩을 보고 한 번에 입력하면 남은 일정이 정확해집니다.</div>'+
-        '<button class="act" style="width:100%;margin-top:10px" onclick="openBulk()">한번에 입력하기</button></div>';
+      h += '<div class="list"><button class="row" onclick="openBulk()">'+
+        '<span class="main"><span class="t">이미 하신 게 있나요?</span>'+
+        '<span class="d">'+past.length+'개 항목이 남아 있습니다. 아기수첩 보고 한 번에 입력하세요.</span></span>'+
+        '<span class="chev">›</span></button></div>';
     }
 
     var items = d.items.filter(function(it){
@@ -452,29 +737,23 @@ function renderSched(){
     });
 
     ['예방접종','건강검진','행정'].forEach(function(g){
-      if(!groups[g]) return;
-      h += '<h2>'+g+' <span class="n">'+groups[g].length+'</span></h2>';
-      groups[g].forEach(function(it){
-        if(it.needsChoice){ h += choiceCard(it); return; }
-        if(it.doneDate){
-          h += '<div class="card row done"><div class="grow"><div class="title">'+esc(it.name)+
-               (it.dose?' <span class="n">'+it.dose+'차</span>':'')+'</div>'+
-               '<div class="sub">'+esc(it.doneDate)+' 완료</div></div>'+
-               '<button class="act ghost" onclick="undo(\''+esc(it.key)+'\')">취소</button></div>';
-        } else {
-          h += itemCard(it, it.status==='open'?'green':it.status==='overdue'?'red':'');
-        }
-      });
+      if(!groups[g] || !groups[g].length) return;
+      h += sec(g, groups[g].length);
+      h += list(groups[g].map(function(it){ return it.doneDate ? doneRow(it) : itemRow(it); }));
     });
-    h += '<div class="banner info" style="margin-top:16px">'+esc(d.comboNote)+'</div>';
+
+    if(!items.length) h += '<div class="empty">해당하는 항목이 없습니다</div>';
+
+    h += '<div style="margin-top:24px"><div class="note">'+esc(d.comboNote)+'</div></div>';
     h += footNote();
     view(h);
   }).catch(fail);
 }
 function setSF(f){ SFILTER = f; go('sched'); }
 function undo(key){
+  if(!confirm('완료를 취소할까요?')) return;
   call('scheduleUndone', { childId: S.childId, key: key })
-    .then(function(){ toast('완료를 취소했습니다'); go('sched'); }).catch(function(e){ toast(e.message); });
+    .then(function(){ toast('취소했습니다'); go('sched'); }).catch(function(e){ toast(e.message); });
 }
 
 /* ── 지금까지 한 것 일괄 입력 ─────────────────────────── */
@@ -483,51 +762,54 @@ function openBulk(){
   call('schedule', { childId: S.childId }).then(function(d){
     var past = d.items.filter(function(x){ return !x.doneDate && !x.needsChoice && !x.advisory &&
                                                   (x.status==='overdue' || x.status==='open'); });
-    var h = '<div class="banner info">아기수첩·병원 기록을 보고 <b>이미 한 것만</b> 체크하세요.<br>'+
-      '날짜를 모르면 그대로 두면 됩니다 — 기한 마지막 날로 추정 입력되고 "추정"으로 표시됩니다. '+
+    var h = '<div class="note">아기수첩·병원 기록을 보고 <b>이미 한 것만</b> 켜세요. '+
+      '날짜를 모르면 그대로 두면 기한 마지막 날로 추정 입력됩니다. '+
       '다음 차수 계산에 쓰이니 아는 날짜는 정확히 넣는 편이 좋습니다.</div>';
 
-    h += '<div class="card"><label>전부 같은 날 맞았다면 (선택)</label>'+
-      '<div class="row" style="gap:8px"><input id="bulkAll" type="date" style="flex:1">'+
-      '<button class="act ghost" onclick="applyBulkDate()">모두 적용</button></div></div>';
+    h += sec('전부 같은 날 맞았다면');
+    h += '<div class="list">'+field('날짜', '<input id="bulkAll" type="date">')+
+      '<button class="row" onclick="applyBulkDate()">'+
+      '<span class="main"><span class="t" style="color:var(--blue)">켜둔 항목에 모두 적용</span></span>'+
+      '</button></div>';
 
-    past.forEach(function(it, i){
-      h += '<div class="card"><label style="display:flex;align-items:center;gap:8px;margin:0 0 8px">'+
-        '<input type="checkbox" class="bulkChk" data-key="'+esc(it.key)+'" data-i="'+i+'" style="width:auto;margin:0">'+
-        '<span class="title">'+esc(it.name)+(it.dose?' '+it.dose+'차':'')+'</span></label>'+
-        '<div class="sub" style="margin-bottom:6px">권장 '+esc(it.start)+' ~ '+esc(it.end)+'</div>'+
-        '<input type="date" class="bulkDate" id="bd'+i+'" value="'+esc(it.end)+'" data-default="'+esc(it.end)+'">'+
-        '</div>';
-    });
+    h += sec('항목', past.length);
+    h += '<div class="list">'+past.map(function(it, i){
+      return '<div class="row"><label class="check" style="flex:1">'+
+          '<span class="txt"><span class="t">'+esc(it.name)+(it.dose?' '+it.dose+'차':'')+'</span>'+
+          '<span class="d">권장 '+esc(it.start)+' ~ '+esc(it.end)+'</span>'+
+          '<span class="d" style="margin-top:6px;display:block">'+
+            '<input type="date" id="bd'+i+'" value="'+esc(it.end)+'" data-default="'+esc(it.end)+'">'+
+          '</span></span>'+
+          '<span class="switch"><input type="checkbox" class="bulkChk" data-key="'+esc(it.key)+'" '+
+            'data-i="'+i+'"><span class="track"></span><span class="knob"></span></span>'+
+        '</label></div>';
+    }).join('')+'</div>';
 
-    h += '<div class="row" style="gap:8px;margin:14px 0 4px">'+
-      '<button class="act ghost grow" onclick="go(\'sched\')">취소</button>'+
-      '<button class="act grow" onclick="submitBulk()">체크한 것 저장</button></div>';
+    h += '<div class="btn-row">'+
+      '<button class="btn tinted" style="flex:1" onclick="go(\'sched\')">취소</button>'+
+      '<button class="btn" style="flex:2" onclick="submitBulk()">켜둔 항목 저장</button></div>';
     h += footNote();
     view(h);
   }).catch(fail);
 }
-
 function applyBulkDate(){
   var v = $('bulkAll').value;
   if(!v) return toast('날짜를 고르세요');
-  var boxes = document.querySelectorAll('.bulkChk');
+  var boxes = document.querySelectorAll('.bulkChk'), n = 0;
   for(var i=0;i<boxes.length;i++){
-    if(boxes[i].checked) $('bd'+boxes[i].getAttribute('data-i')).value = v;
+    if(boxes[i].checked){ $('bd'+boxes[i].getAttribute('data-i')).value = v; n++; }
   }
-  toast('체크한 항목에 적용했습니다');
+  toast(n ? n+'개 항목에 적용했습니다' : '켜둔 항목이 없습니다');
 }
-
 function submitBulk(){
   var boxes = document.querySelectorAll('.bulkChk'), items = [];
   for(var i=0;i<boxes.length;i++){
     if(!boxes[i].checked) continue;
-    var idx = boxes[i].getAttribute('data-i');
-    var el = $('bd'+idx);
+    var el = $('bd'+boxes[i].getAttribute('data-i'));
     items.push({ key: boxes[i].getAttribute('data-key'), date: el.value,
                  approx: el.value === el.getAttribute('data-default') });
   }
-  if(!items.length) return toast('체크한 항목이 없습니다');
+  if(!items.length) return toast('켜둔 항목이 없습니다');
   call('scheduleBulkDone', { childId: S.childId, items: items }).then(function(r){
     toast(r.saved + '건 저장했습니다' + (r.skipped.length ? ' ('+r.skipped.length+'건 건너뜀)' : ''));
     go('sched');
@@ -542,57 +824,74 @@ function renderLog(){
       return '<button onclick="quickLog(\''+t[0]+'\')"><span class="ic">'+t[1]+'</span>'+t[0]+'</button>';
     }).join('')+'</div>';
 
-    h += '<div class="card"><div class="row" style="gap:8px">'+
-      '<input id="memoText" placeholder="인수인계 메모 (예: 낮잠 짧았음)" style="flex:1">'+
-      '<button class="act" onclick="quickLog(\'메모\')">남기기</button></div></div>';
+    h += sec('오늘');
+    h += '<div class="list"><div class="row"><span class="main">'+summaryLine(d.summary)+'</span></div>'+
+      '<button class="row" onclick="openMemoSheet()">'+
+      '<span class="main"><span class="t" style="color:var(--blue)">인수인계 메모 남기기</span></span>'+
+      '<span class="chev">›</span></button></div>';
 
-    h += '<h2>오늘</h2><div class="card">'+summaryLine(d.summary)+'</div>';
-
-    h += '<h2>최근 기록 <span class="n">'+d.rows.length+'</span></h2>';
-    if(!d.rows.length) h += '<div class="empty">기록이 없습니다</div>';
-    d.rows.forEach(function(r){
-      var t = LOGTYPES.filter(function(x){ return x[0]===r.type; })[0];
-      h += '<div class="card row"><span style="font-size:20px">'+(t?t[1]:'📝')+'</span>'+
-        '<div class="grow"><div class="title">'+esc(r.type)+
-        (r.v1?' <span class="n">'+esc(r.v1)+(r.v2?'~'+esc(r.v2):'')+'</span>':'')+'</div>'+
-        '<div class="sub">'+esc(r.at)+(r.by?' · '+esc(r.by):'')+
-        (r.detail?' · '+esc(r.detail):'')+'</div></div>'+
-        '<button class="act ghost" onclick="logDel(\''+esc(r.id)+'\')">삭제</button></div>';
-    });
+    h += sec('최근 기록', d.rows.length);
+    if(!d.rows.length){
+      h += '<div class="empty">기록이 없습니다.<br>위 버튼을 누르면 지금 시각으로 바로 기록됩니다.</div>';
+    } else {
+      h += list(d.rows.map(function(r){
+        var t = LOGTYPES.filter(function(x){ return x[0]===r.type; })[0];
+        return '<div class="row tappable" onclick="logDel(\''+esc(r.id)+'\')">'+
+          '<span class="emoji">'+(t?t[1]:'📝')+'</span>'+
+          '<span class="main"><span class="t">'+esc(r.type)+
+          (r.v1?' <span style="color:var(--label-2)">'+esc(r.v1)+(r.v2&&r.v2!=='신규'?'~'+esc(r.v2):'')+'</span>':'')+
+          (r.v2==='신규'?' <span class="badge orange">처음</span>':'')+'</span>'+
+          '<span class="d">'+esc(r.at)+(r.by?' · '+esc(r.by):'')+
+          (r.detail?' · '+esc(r.detail):'')+'</span></span>'+
+          '<span class="chev">›</span></div>';
+      }));
+      h += '<div class="foot" style="padding-top:10px">기록을 탭하면 삭제할 수 있습니다</div>';
+    }
     h += footNote();
     view(h);
   }).catch(fail);
 }
 
+function openMemoSheet(){
+  sheet('인수인계 메모',
+    '<div class="list">'+field('내용', '<input id="memoText" placeholder="예: 낮잠 짧았음. 저녁에 보챌 수도" autofocus>')+'</div>',
+    '남기기', 'submitMemo()');
+}
+function submitMemo(){
+  var m = $('memoText').value.trim();
+  if(!m) return toast('내용을 입력해 주세요');
+  call('logAdd', { childId: S.childId, type: '메모', detail: m })
+    .then(function(){ closeDialog(); toast('남겼습니다'); go('log'); })
+    .catch(function(e){ toast(e.message); });
+}
+
 function quickLog(type){
-  if(type==='메모'){
-    var m = $('memoText').value.trim();
-    if(!m) return toast('내용을 입력해 주세요');
-    return call('logAdd',{childId:S.childId,type:'메모',detail:m})
-      .then(function(){ toast('남겼습니다'); go('log'); }).catch(function(e){ toast(e.message); });
-  }
   var fields = {
-    '수유': '<label>양 / 종류</label><input id="q1" placeholder="예: 160ml 분유">',
-    '이유식': '<label>먹은 것 / 재료</label><input id="q1" placeholder="예: 소고기">'+
-            '<label style="display:flex;align-items:center;gap:8px;margin-top:12px">'+
-            '<input type="checkbox" id="qNew" style="width:auto;margin:0"> 처음 먹이는 재료</label>'+
-            '<div class="banner info" style="margin-top:8px">처음 먹이는 재료는 '+
-            '3일간 이상반응을 지켜봅니다. 체크해 두면 홈에서 알려드립니다.</div>',
-    '수면': '<div class="grid2"><div><label>잠든 시각</label><input id="q1" type="time"></div>'+
-            '<div><label>깬 시각</label><input id="q2" type="time"></div></div>',
-    '배변': '<label>상태</label><select id="q1"><option>보통</option><option>묽음</option>'+
-            '<option>단단함</option><option>설사</option></select>',
-    '체온': '<label>체온 (℃)</label><input id="q1" type="number" step="0.1" inputmode="decimal" placeholder="36.8">',
-    '투약': '<label>약 이름</label><input id="q1" placeholder="처방받은 약 이름">'+
-            '<label>복용량 (처방대로 입력)</label><input id="q2" placeholder="예: 4ml">'+
-            '<div class="banner warn" style="margin-top:10px">용량은 자동 계산하지 않습니다. '+
-            '처방전에 적힌 대로 입력하세요.</div>'
+    '수유': field('양 / 종류', '<input id="q1" placeholder="예: 160ml 분유" autofocus>'),
+    '이유식': field('먹은 것 / 재료', '<input id="q1" placeholder="예: 소고기" autofocus>')+
+            '<div class="field"><label class="check">'+
+              '<span class="txt">처음 먹이는 재료'+
+                '<span class="d">켜두면 3일간 홈 화면에서 이상반응을 지켜봅니다</span></span>'+
+              '<span class="switch"><input type="checkbox" id="qNew">'+
+                '<span class="track"></span><span class="knob"></span></span>'+
+            '</label></div>',
+    '수면': '<div class="field"><div class="pair">'+
+            '<div><label>잠든 시각</label><input id="q1" type="time"></div>'+
+            '<div><label>깬 시각</label><input id="q2" type="time"></div></div></div>',
+    '배변': field('상태', '<select id="q1"><option>보통</option><option>묽음</option>'+
+            '<option>단단함</option><option>설사</option></select>'),
+    '체온': field('체온 (℃)', '<input id="q1" type="number" step="0.1" inputmode="decimal" placeholder="36.8" autofocus>'),
+    '투약': field('약 이름', '<input id="q1" placeholder="처방받은 약 이름" autofocus>')+
+            field('복용량', '<input id="q2" placeholder="예: 4ml">')
   }[type] || '';
-  openDialog('<div class="title">'+esc(type)+' 기록</div>'+fields+
-    '<label>메모 (선택)</label><input id="qd">'+
-    '<div class="row" style="margin-top:14px;gap:8px">'+
-    '<button class="act ghost grow" onclick="closeDialog()">취소</button>'+
-    '<button class="act grow" onclick="submitLog(\''+type+'\')">기록</button></div>');
+
+  var warn = type==='투약'
+    ? '<div style="margin-top:12px"><div class="note warn">용량은 자동 계산하지 않습니다. '+
+      '처방전에 적힌 대로 입력하세요.</div></div>' : '';
+
+  sheet(type+' 기록',
+    '<div class="list">'+fields+field('메모 (선택)', '<input id="qd">')+'</div>'+warn,
+    '기록', 'submitLog(\''+type+'\')');
 }
 function submitLog(type){
   var q1 = $('q1'), q2 = $('q2'), qd = $('qd'), qn = $('qNew');
@@ -603,6 +902,7 @@ function submitLog(type){
     .catch(function(e){ toast(e.message); });
 }
 function logDel(id){
+  if(!confirm('이 기록을 지울까요?')) return;
   call('logDelete', { id: id }).then(function(){ toast('삭제했습니다'); go('log'); })
     .catch(function(e){ toast(e.message); });
 }
@@ -610,24 +910,39 @@ function logDel(id){
 /* ── 아이 설정 ───────────────────────────────────────── */
 function openChildForm(){ renderChildForm(false); }
 function renderChildForm(first){
-  var c = S.children.filter(function(x){ return x.id===S.childId; })[0] || {};
-  var h = (first ? '<div class="banner info">아이 정보를 먼저 등록해 주세요. '+
-                   '생년월일로 접종·검진 일정이 자동 계산됩니다.</div>' : '');
-  h += '<div class="card">'+
-    '<label>이름</label><input id="cName" value="'+esc(c.name||'')+'">'+
-    '<div class="grid2">'+
-    '<div><label>생년월일</label><input id="cBirth" type="date" value="'+esc(c.birthDate||'')+'"></div>'+
-    '<div><label>성별</label><select id="cSex"><option'+(c.sexLabel==='남'?' selected':'')+'>남</option>'+
-    '<option'+(c.sexLabel==='여'?' selected':'')+'>여</option></select></div></div>'+
-    '<div class="grid2">'+
-    '<div><label>혈액형</label><input id="cBlood" placeholder="예: A+"></div>'+
-    '<div><label>알레르기</label><input id="cAllergy" placeholder="없으면 비워두세요"></div></div>'+
-    '<label>특이사항</label><input id="cNote">'+
-    '<button class="act" style="width:100%;margin-top:14px" onclick="saveChild(\''+esc(c.id||'')+'\')">저장</button>'+
+  var c = first ? {} : (S.children.filter(function(x){ return x.id===S.childId; })[0] || {});
+  var h = first
+    ? '<div class="note">아이 정보를 먼저 등록해 주세요.<br>'+
+      '<b>생년월일</b>로 접종·검진 일정이 자동 계산됩니다.</div>'
+    : '';
+
+  h += sec('기본 정보');
+  h += '<div class="list">'+
+    field('이름', '<input id="cName" value="'+esc(c.name||'')+'" placeholder="아이 이름">')+
+    '<div class="field"><div class="pair">'+
+      '<div><label>생년월일</label><input id="cBirth" type="date" value="'+esc(c.birthDate||'')+'"></div>'+
+      '<div><label>성별</label><select id="cSex">'+
+        '<option'+(c.sexLabel==='남'?' selected':'')+'>남</option>'+
+        '<option'+(c.sexLabel==='여'?' selected':'')+'>여</option></select></div>'+
+    '</div></div>'+
     '</div>';
-  if(!first) h += '<div class="card"><div class="title">아이 추가</div>'+
-    '<div class="sub">위 칸을 비우고 새 이름으로 저장하면 둘째가 추가됩니다.</div>'+
-    '<button class="act ghost" style="width:100%;margin-top:10px" onclick="renderChildForm(true)">새로 입력</button></div>';
+
+  h += sec('응급 정보');
+  h += '<div class="list">'+
+    field('혈액형', '<input id="cBlood" value="'+esc(c.blood||'')+'" placeholder="예: A+">')+
+    field('알레르기', '<input id="cAllergy" value="'+esc(c.allergy||'')+'" placeholder="없으면 비워두세요">')+
+    field('특이사항', '<input id="cNote" value="'+esc(c.note||'')+'">')+
+    '</div>';
+
+  h += '<div class="btn-row"><button class="btn wide" onclick="saveChild(\''+esc(first?'':(c.id||''))+'\')">저장</button></div>';
+
+  if(!first && S.children.length){
+    h += sec('둘째');
+    h += '<div class="list"><button class="row" onclick="renderChildForm(true)">'+
+      '<span class="main"><span class="t" style="color:var(--blue)">아이 추가</span>'+
+      '<span class="d">아이마다 일정과 기록이 따로 관리됩니다</span></span>'+
+      '<span class="chev">›</span></button></div>';
+  }
   h += footNote();
   view(h);
 }
@@ -645,8 +960,8 @@ function saveChild(id){
 }
 
 function footNote(){
-  return '<div class="foot">접종·검진 일정은 <b>참고용</b>입니다. '+
-    '최종 확인은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener">예방접종도우미</a>와 소아과에서 하세요.<br>'+
+  return '<div class="foot">접종·검진 일정은 <b>참고용</b>입니다. 최종 확인은 '+
+    '<a href="https://nip.kdca.go.kr" target="_blank" rel="noopener">예방접종도우미</a>와 소아과에서 하세요.<br>'+
     '성장 백분위는 WHO 성장표준(0~5세) 기준입니다.</div>';
 }
 </script>
