@@ -25,58 +25,30 @@ Google Apps Script + 구글시트로 돌아가며 서버 비용이 없다.
 
 ## 설치
 
-### 1. 스프레드시트 만들기
-새 구글 스프레드시트를 만들고 **아내분 계정과 공유**(편집자)한다.
-주소창의 `https://docs.google.com/spreadsheets/d/`**`이 부분`**`/edit` 이 스프레드시트 ID.
+**→ [배포.md](배포.md) 에 단계별 체크리스트가 있습니다.** (약 15분)
 
-### 2. Apps Script 프로젝트
-1. <https://script.google.com> → **새 프로젝트**
-2. `src/` 의 **`.gs` 파일 9개**를 같은 이름으로 각각 만들어 붙여넣는다
-   `Code` `Api` `Store` `Setup` `Triggers` `lib_growth` `lib_schedule` `data_lms` `data_schedule`
-   (편집기에서 파일명에 `.gs` 는 자동으로 붙는다)
-3. 왼쪽 **+ → HTML** → 이름 **`Page`** → `src/Page.html` 내용 붙여넣기
-4. **`Setup.gs` 맨 위 `SPREADSHEET_ID`** 를 1번에서 복사한 ID 로 교체
+붙여넣을 파일은 두 개뿐입니다:
 
-> 파일이 많아 손으로 옮기기 번거로우면 [clasp](https://github.com/google/clasp) 를 쓴다:
-> `npm i -g @google/clasp && clasp login && clasp create --type webapp && clasp push`
-
-### 3. 초기화
-편집기 함수 목록에서 **`setupSheets`** 선택 → **실행** → 권한 승인.
-탭 7개(`설정` `아이` `성장기록` `일정완료` `할일` `생활기록` `병원`)가 생긴다.
-
-`설정` 탭에서 채울 것:
-
-| 키 | 값 예시 |
+| 파일 | Apps Script 에서 |
 |---|---|
-| 허용이메일 | `남편@gmail.com, 아내@gmail.com` — **여기 적힌 계정만 앱이 열린다** |
-| 이름표 | `남편@gmail.com=아빠, 아내@gmail.com=엄마` (기록자 표시용, 선택) |
-| 알림요일 | `1` (1=월 … 7=일) |
-| 알림시각 | `8` |
-| 캘린더ID | 비워두면 기본 캘린더 |
+| `dist/배포용_전체코드.gs` | 기본 `Code.gs` 내용을 지우고 통째로 붙여넣기 |
+| `dist/Page.html` | ＋ → HTML → 이름 **`Page`** 로 만들어 붙여넣기 |
 
-### 4. 배포
-**배포 → 새 배포 → 유형(톱니바퀴) → 웹 앱**
+그 다음 `SPREADSHEET_ID` 교체 → `setupSheets` 실행 → 웹앱 배포 → `installTriggers` 실행.
 
-| 항목 | 값 | 왜 |
-|---|---|---|
-| 실행 계정 | **웹 앱에 액세스하는 사용자** | 누가 기록했는지 알 수 있고, 시트 권한이 2차 방어선이 된다 |
-| 액세스 권한 | **모든 Google 계정 사용자** | 구글 계정 로그인은 요구하되, 실제 통과는 허용이메일 + 시트 공유로 거른다 |
+배포 설정 두 가지만 주의하세요:
 
-> ⚠️ 액세스를 "모든 사용자"(로그인 없음)로 두지 말 것. 아이 건강정보다.
+- **실행 계정 = 웹 앱에 액세스하는 사용자** (누가 기록했는지 알기 위해)
+- **액세스 권한 = 모든 Google 계정 사용자** — "모든 사용자"(로그인 없음)로 두면 안 됩니다
 
-나온 URL 을 휴대폰에서 열고 **홈 화면에 추가**하면 앱처럼 쓸 수 있다.
-
-### 5. 자동화 켜기
-함수 목록에서 **`installTriggers`** 실행 → 권한 승인.
-주간 요약 메일 / 매일 캘린더 동기화 / 주간 백업 트리거가 걸린다.
-
-설치가 잘 됐는지 확인: **`checkSetup`** 실행 후 실행 로그 확인.
+clasp 를 쓰면 `clasp push` 한 줄로 끝납니다. `src/appsscript.json` 에 설정이 들어 있습니다.
 
 ## 개발
 
 ```bash
 npm install     # 교차검증용 devDependency (who-growth-standards)
-npm test        # 85개 테스트
+npm test        # 91개 테스트
+npm run bundle  # src/ → dist/배포용_전체코드.gs 재생성
 ```
 
 계산 로직(`lib_growth.gs`, `lib_schedule.gs`)은 Apps Script API 를 전혀 쓰지 않는
@@ -91,6 +63,9 @@ npm test        # 85개 테스트
 | `schedule.test.js` | 접종·검진 창, 지연 시 재계산, 말일 경계, 독감 시즌 규칙 |
 | `api.test.js` | 전체 흐름, 아이별 데이터 분리, 권한, 메일 이스케이프, 일괄 입력, 이유식 관찰 |
 | `syntax.test.js` | 붙여넣기 전 문법·태그 균형·프런트가 부르는 액션 존재 여부 |
+| `bundle.test.js` | 실제로 붙여넣는 `dist/` 파일이 src 와 같은지, 그 한 파일만으로 도는지 |
+
+**`src/` 를 고쳤으면 `npm run bundle` 을 잊지 마세요.** 테스트가 확인해 주긴 합니다.
 
 LMS 표를 다시 만들려면 `npm run gen:lms` (`tools/gen_lms.js` — 격자 오차도 같이 출력한다).
 
