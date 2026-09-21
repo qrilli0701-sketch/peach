@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>우리 아이</title>
+<style>
+  :root{
+    --bg:#ffffff; --card:#ffffff; --line:#e3e6ea; --fg:#1f2328; --muted:#6a737d;
+    --accent:#1a73e8; --danger:#c5221f; --ok:#188038; --warn:#b06000;
+    --chip:#f1f3f4; --shadow:0 1px 2px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#16181c; --card:#1f2228; --line:#2f343c; --fg:#e6e9ef; --muted:#9aa4b2;
+           --accent:#6ea8fe; --danger:#ff6b63; --ok:#5dd47f; --warn:#e8a33d;
+           --chip:#282c34; --shadow:none; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+       padding-bottom:76px}
+  .wrap{max-width:560px;margin:0 auto;padding:0 16px}
+  header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);
+         padding:10px 0 8px}
+  .hrow{display:flex;align-items:center;gap:10px}
+  .hrow select{flex:0 1 auto;font-size:16px;font-weight:600;background:transparent;color:var(--fg);
+               border:none;padding:4px 2px;max-width:45%}
+  .age{color:var(--muted);font-size:13px;flex:1}
+  .icon-btn{background:var(--chip);border:none;border-radius:8px;color:var(--fg);
+            padding:6px 10px;font-size:13px;cursor:pointer}
+  h2{font-size:15px;margin:22px 0 8px;display:flex;align-items:center;gap:6px}
+  h2 .n{color:var(--muted);font-weight:400;font-size:13px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow)}
+  .row{display:flex;align-items:center;gap:10px}
+  .grow{flex:1;min-width:0}
+  .title{font-weight:600}
+  .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .dday{font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px;background:var(--chip);
+        white-space:nowrap}
+  .dday.red{background:rgba(197,34,31,.12);color:var(--danger)}
+  .dday.green{background:rgba(24,128,56,.12);color:var(--ok)}
+  .dday.warn{background:rgba(176,96,0,.14);color:var(--warn)}
+  button.act{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;
+             font-size:13px;font-weight:600;cursor:pointer}
+  button.ghost{background:var(--chip);color:var(--fg)}
+  button:disabled{opacity:.5}
+  nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--line);
+      display:flex;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;background:none;border:none;color:var(--muted);padding:10px 0 12px;
+             font-size:11px;cursor:pointer;font-family:inherit}
+  nav button .ic{display:block;font-size:19px;margin-bottom:1px}
+  nav button.on{color:var(--accent)}
+  .empty{color:var(--muted);text-align:center;padding:28px 12px;font-size:14px}
+  .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .metric{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;
+          text-align:center}
+  .metric .k{font-size:11px;color:var(--muted)}
+  .metric .v{font-size:17px;font-weight:700;margin-top:2px}
+  .metric .p{font-size:12px;color:var(--accent);font-weight:600}
+  .quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+  .quick button{background:var(--card);border:1px solid var(--line);border-radius:14px;
+                padding:16px 4px;font-size:12px;color:var(--fg);cursor:pointer;font-family:inherit}
+  .quick button .ic{display:block;font-size:24px;margin-bottom:4px}
+  label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;
+    background:var(--bg);color:var(--fg);font-size:16px;font-family:inherit}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .tabs{display:flex;gap:6px;margin:12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tabs button{background:var(--chip);border:none;border-radius:999px;padding:7px 13px;font-size:13px;
+               color:var(--fg);white-space:nowrap;cursor:pointer;font-family:inherit}
+  .tabs button.on{background:var(--accent);color:#fff}
+  .banner{border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:10px}
+  .banner.warn{background:rgba(176,96,0,.14);color:var(--warn)}
+  .banner.err{background:rgba(197,34,31,.12);color:var(--danger)}
+  .banner.info{background:var(--chip);color:var(--muted)}
+  .done{opacity:.55}
+  .done .title{text-decoration:line-through}
+  .chart{width:100%;height:230px;display:block}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:4px}
+  .foot{color:var(--muted);font-size:11px;text-align:center;padding:22px 12px 8px;line-height:1.7}
+  .foot a{color:var(--muted)}
+  dialog{border:none;border-radius:14px;padding:18px;max-width:420px;width:calc(100% - 32px);
+         background:var(--card);color:var(--fg)}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);
+        border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:86px;background:#1f2328;color:#fff;
+         padding:10px 16px;border-radius:999px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;
+         pointer-events:none;max-width:90%}
+  .toast.on{opacity:.95}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap hrow">
+    <select id="childSel" onchange="switchChild(this.value)"></select>
+    <span class="age" id="ageLabel"></span>
+    <button class="icon-btn" onclick="openChildForm()">아이 설정</button>
+  </div>
+</header>
+
+<main class="wrap" id="view"><div class="empty"><span class="spin"></span></div></main>
+
+<nav>
+  <button id="nav-today"  class="on" onclick="go('today')"><span class="ic">🏠</span>오늘</button>
+  <button id="nav-growth"          onclick="go('growth')"><span class="ic">📈</span>성장</button>
+  <button id="nav-sched"           onclick="go('sched')"><span class="ic">💉</span>일정</button>
+  <button id="nav-log"             onclick="go('log')"><span class="ic">📝</span>기록</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<dialog id="dlg"><div id="dlgBody"></div></dialog>
+
+<script>
+/* ── 서버 호출 ────────────────────────────────────────── */
+function call(action, payload){
+  return new Promise(function(resolve, reject){
+    google.script.run
+      .withSuccessHandler(function(r){ r && r.ok ? resolve(r.data) : reject(new Error(r ? r.error : '응답 없음')); })
+      .withFailureHandler(function(e){ reject(e); })
+      .api(action, payload || {});
+  });
+}
+
+var S = { children: [], childId: null, tab: 'today', who: '', today: '', cache: {} };
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function $(id){ return document.getElementById(id); }
+function view(html){ $('view').innerHTML = html; }
+function busy(){ view('<div class="empty"><span class="spin"></span></div>'); }
+function toast(msg){
+  var t = $('toast'); t.textContent = msg; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('on'); }, 2200);
+}
+function fail(e){ view('<div class="banner err">'+esc(e.message||e)+'</div>'); }
+
+/* ── 부팅 ────────────────────────────────────────────── */
+call('bootstrap').then(function(d){
+  S.children = d.children; S.who = d.who; S.today = d.today; S.comboNote = d.comboNote;
+  if(!d.children.length){ renderChildForm(true); return; }
+  S.childId = localStorage.getItem('childId') || d.children[0].id;
+  if(!d.children.some(function(c){ return c.id===S.childId; })) S.childId = d.children[0].id;
+  renderChildSelect(); go('today');
+}).catch(fail);
+
+function renderChildSelect(){
+  $('childSel').innerHTML = S.children.map(function(c){
+    return '<option value="'+esc(c.id)+'"'+(c.id===S.childId?' selected':'')+'>'+esc(c.name)+'</option>';
+  }).join('');
+}
+function switchChild(id){ S.childId = id; localStorage.setItem('childId', id); S.cache = {}; go(S.tab); }
+
+function go(tab){
+  S.tab = tab;
+  ['today','growth','sched','log'].forEach(function(t){
+    var b = $('nav-'+(t==='sched'?'sched':t)); if(b) b.classList.toggle('on', t===tab);
+  });
+  busy();
+  ({ today: renderToday, growth: renderGrowth, sched: renderSched, log: renderLog })[tab]();
+}
+
+/* ── 오늘 ────────────────────────────────────────────── */
+function renderToday(){
+  call('dashboard', { childId: S.childId }).then(function(d){
+    $('ageLabel').textContent = d.child.ageLabel;
+    var h = '';
+
+    if(d.growth){
+      h += '<div class="metrics">';
+      ['lhfa','wfa','hcfa'].forEach(function(k){
+        var m = d.growth.metrics[k]; if(!m) return;
+        h += '<div class="metric"><div class="k">'+esc(m.label)+'</div>'+
+             '<div class="v">'+esc(m.value)+'<span class="n" style="font-size:11px">'+esc(m.unit)+'</span></div>'+
+             '<div class="p">'+esc(m.text)+'</div></div>';
+      });
+      h += '</div>';
+      d.growth.trends.forEach(function(t){
+        h += '<div class="banner '+(t.trend==='down'?'warn':'info')+'">'+esc(t.message)+'</div>';
+      });
+    } else {
+      h += '<div class="banner info">키·몸무게를 입력하면 백분위가 계산됩니다. '+
+           '<a href="#" onclick="go(\'growth\');return false">성장 탭으로</a></div>';
+    }
+
+    h += group('지났습니다', d.overdue, 'red');
+    h += group('지금 하실 수 있습니다', d.open, 'green');
+    h += group('곧 시작됩니다', d.soon, '');
+
+    h += '<h2>오늘 <span class="n">'+esc(d.todaySummary.entryCount)+'건 기록</span></h2>';
+    h += '<div class="card">' + summaryLine(d.todaySummary) + '</div>';
+
+    h += '<h2>할 일 <span class="n">'+d.todos.length+'</span></h2>';
+    if(!d.todos.length) h += '<div class="card sub">직접 추가한 할 일이 없습니다</div>';
+    d.todos.forEach(function(t){
+      h += '<div class="card row"><div class="grow"><div class="title">'+esc(t.title)+'</div>'+
+           '<div class="sub">'+esc(t.category||'')+(t.due?' · '+esc(t.due):'')+
+           (t.owner?' · '+esc(t.owner):'')+'</div></div>'+
+           '<button class="act ghost" onclick="todoDone(\''+esc(t.id)+'\')">완료</button></div>';
+    });
+    h += '<div class="card"><div class="row" style="gap:8px">'+
+         '<input id="todoTitle" placeholder="할 일 추가 (예: 어린이집 준비물)" style="flex:1">'+
+         '<button class="act" onclick="todoAdd()">추가</button></div>'+
+         '<div class="grid2" style="margin-top:8px">'+
+         '<input id="todoDue" type="date" placeholder="기한">'+
+         '<select id="todoOwner"><option value="">담당 없음</option><option>아빠</option><option>엄마</option></select>'+
+         '</div></div>';
+
+    h += footNote();
+    view(h);
+  }).catch(fail);
+}
+
+function group(title, items, tone){
+  if(!items.length) return '';
+  var h = '<h2>'+esc(title)+' <span class="n">'+items.length+'</span></h2>';
+  items.forEach(function(it){ h += itemCard(it, tone); });
+  return h;
+}
+
+function itemCard(it, tone){
+  if(it.needsChoice) return choiceCard(it);
+  var cls = it.alert ? 'red' : (tone||'');
+  return '<div class="card row"><div class="grow">'+
+    '<div class="title">'+esc(it.name)+(it.dose?' <span class="n">'+it.dose+'/'+(it.totalDoses||it.dose)+'차</span>':'')+'</div>'+
+    '<div class="sub">'+esc(it.start)+' ~ '+esc(it.end)+
+      (it.shifted?' · 앞 차수 지연 반영':'')+(it.note?' · '+esc(it.note):'')+'</div></div>'+
+    '<span class="dday '+cls+'">'+esc(it.dday)+'</span>'+
+    '<button class="act ghost" onclick="markDone(\''+esc(it.key)+'\',\''+esc(it.name)+'\')">완료</button></div>';
+}
+
+function choiceCard(it){
+  return '<div class="card"><div class="title">'+esc(it.name)+' 종류 선택</div>'+
+    '<div class="sub">'+esc(it.note)+'</div><div class="tabs">'+
+    it.choices.map(function(c){
+      var series = it.code==='RV' ? 'rota' : 'je';
+      return '<button onclick="pickVaccine(\''+series+'\',\''+esc(c.key)+'\')">'+esc(c.label)+'</button>';
+    }).join('')+'</div></div>';
+}
+
+function summaryLine(s){
+  var parts = [];
+  parts.push(s.lastFeed ? '마지막 수유/식사 <b>'+esc(s.lastFeed.at)+'</b>'+
+             (s.lastFeed.detail?' ('+esc(s.lastFeed.detail)+')':'')+
+             (s.lastFeed.by?' · '+esc(s.lastFeed.by):'') : '수유/식사 기록 없음');
+  if(s.sleepMinutes) parts.push('수면 <b>'+Math.floor(s.sleepMinutes/60)+'시간 '+(s.sleepMinutes%60)+'분</b>');
+  if(s.poopCount) parts.push('배변 <b>'+s.poopCount+'회</b>');
+  if(s.lastTemp) parts.push('체온 <b>'+esc(s.lastTemp.value)+'</b> ('+esc(s.lastTemp.at)+')');
+  if(s.medCount) parts.push('투약 <b>'+s.medCount+'회</b>');
+  var h = '<div class="sub" style="font-size:14px;color:var(--fg)">'+parts.join(' · ')+'</div>';
+  if(s.memo) h += '<div class="sub" style="margin-top:6px">💬 '+esc(s.memo)+'</div>';
+  return h;
+}
+
+function todoAdd(){
+  var title = $('todoTitle').value.trim();
+  if(!title) return toast('제목을 입력해 주세요');
+  call('todoAdd', { childId: S.childId, title: title, due: $('todoDue').value,
+                    owner: $('todoOwner').value })
+    .then(function(){ toast('추가했습니다'); go('today'); }).catch(function(e){ toast(e.message); });
+}
+function todoDone(id){
+  call('todoDone', { id: id }).then(function(){ toast('완료'); go('today'); })
+    .catch(function(e){ toast(e.message); });
+}
+function pickVaccine(series, choice){
+  call('vaccineChoice', { childId: S.childId, series: series, choice: choice })
+    .then(function(){ toast('일정을 계산했습니다'); go(S.tab); }).catch(function(e){ toast(e.message); });
+}
+
+/* ── 완료 체크 다이얼로그 ─────────────────────────────── */
+function markDone(key, name){
+  openDialog('<div class="title">'+esc(name)+'</div>'+
+    '<label>완료일</label><input id="dDate" type="date" value="'+S.today+'">'+
+    '<label>기관 (선택)</label><input id="dPlace" placeholder="예: OO소아과">'+
+    '<div class="row" style="margin-top:14px;gap:8px">'+
+    '<button class="act ghost grow" onclick="closeDialog()">취소</button>'+
+    '<button class="act grow" onclick="submitDone(\''+esc(key)+'\')">완료 기록</button></div>');
+}
+function submitDone(key){
+  call('scheduleDone', { childId: S.childId, key: key, date: $('dDate').value, place: $('dPlace').value })
+    .then(function(){ closeDialog(); toast('기록했습니다'); go(S.tab); })
+    .catch(function(e){ toast(e.message); });
+}
+function openDialog(html){ $('dlgBody').innerHTML = html; $('dlg').showModal(); }
+function closeDialog(){ $('dlg').close(); }
+
+/* ── 성장 ────────────────────────────────────────────── */
+var GIND = 'wfa';
+function renderGrowth(){
+  Promise.all([ call('growth', { childId: S.childId }),
+                call('growthChart', { childId: S.childId, indicator: GIND }) ])
+  .then(function(r){
+    var d = r[0], ch = r[1];
+    var h = '';
+    h += '<div class="card"><div class="title">새 측정 입력</div>'+
+      '<label>측정일</label><input id="gDate" type="date" value="'+S.today+'">'+
+      '<div class="grid3">'+
+      '<div><label>키 (cm)</label><input id="gH" type="number" step="0.1" inputmode="decimal"></div>'+
+      '<div><label>몸무게 (kg)</label><input id="gW" type="number" step="0.01" inputmode="decimal"></div>'+
+      '<div><label>머리둘레 (cm)</label><input id="gC" type="number" step="0.1" inputmode="decimal"></div>'+
+      '</div><button class="act" style="width:100%;margin-top:12px" onclick="growthAdd()">기록하기</button></div>';
+
+    h += '<div class="tabs">'+
+      [['wfa','몸무게'],['lhfa','키'],['hcfa','머리둘레'],['bfa','BMI']].map(function(p){
+        return '<button class="'+(GIND===p[0]?'on':'')+'" onclick="setGInd(\''+p[0]+'\')">'+p[1]+'</button>';
+      }).join('')+'</div>';
+
+    for(var k in d.trends){
+      if(k!==GIND) continue;
+      var t = d.trends[k];
+      h += '<div class="banner '+(t.trend==='down'?'warn':'info')+'">'+esc(t.message)+'</div>';
+    }
+    h += '<div class="card">'+chartSvg(ch)+
+      '<div class="legend"><span>— 우리 아이</span><span style="color:var(--muted)">… 3·15·50·85·97 백분위</span></div></div>';
+
+    h += '<h2>기록 <span class="n">'+d.rows.length+'</span></h2>';
+    if(!d.rows.length) h += '<div class="empty">아직 기록이 없습니다</div>';
+    d.rows.slice().reverse().forEach(function(r){
+      var m = r.metrics, bits = [];
+      if(r.heightCm) bits.push('키 '+r.heightCm+'cm'+(m.lhfa?' ('+m.lhfa.text+')':''));
+      if(r.weightKg) bits.push('몸무게 '+r.weightKg+'kg'+(m.wfa?' ('+m.wfa.text+')':''));
+      if(r.headCm) bits.push('머리 '+r.headCm+'cm'+(m.hcfa?' ('+m.hcfa.text+')':''));
+      h += '<div class="card row"><div class="grow"><div class="title">'+esc(r.date)+
+        ' <span class="n">'+esc(r.ageLabel)+'</span></div>'+
+        '<div class="sub">'+esc(bits.join(' · '))+'</div>'+
+        (r.memo?'<div class="sub">'+esc(r.memo)+'</div>':'')+'</div>'+
+        '<button class="act ghost" onclick="growthDel(\''+esc(r.id)+'\')">삭제</button></div>';
+    });
+    h += footNote();
+    view(h);
+  }).catch(fail);
+}
+function setGInd(i){ GIND = i; go('growth'); }
+
+function growthAdd(){
+  call('growthAdd', { childId: S.childId, date: $('gDate').value,
+                      heightCm: $('gH').value, weightKg: $('gW').value, headCm: $('gC').value })
+    .then(function(r){
+      var m = r.evaluated.metrics, msg = [];
+      if(m.lhfa) msg.push('키 '+Math.round(m.lhfa.percentile)+'p');
+      if(m.wfa) msg.push('몸무게 '+Math.round(m.wfa.percentile)+'p');
+      toast(msg.length ? msg.join(' · ') : '기록했습니다');
+      go('growth');
+    }).catch(function(e){ toast(e.message); });
+}
+function growthDel(id){
+  if(!confirm('이 기록을 지울까요?')) return;
+  call('growthDelete', { id: id }).then(function(){ toast('삭제했습니다'); go('growth'); })
+    .catch(function(e){ toast(e.message); });
+}
+
+/** 백분위 밴드 + 우리 아이 곡선 (외부 라이브러리 없이 SVG 직접 생성) */
+function chartSvg(ch){
+  var W = 520, H = 230, P = { l: 34, r: 8, t: 10, b: 22 };
+  var xs = [], ys = [];
+  ch.bands.forEach(function(b){ b.points.forEach(function(p){ xs.push(p.x); ys.push(p.y); }); });
+  ch.points.forEach(function(p){ xs.push(p.x); ys.push(p.y); });
+  if(!ys.length) return '<div class="empty">표시할 데이터가 없습니다</div>';
+
+  var x0 = 0, x1 = ch.maxDays || Math.max.apply(null, xs);
+  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  var pad = (y1 - y0) * 0.06 || 1; y0 -= pad; y1 += pad;
+  var X = function(v){ return P.l + (v - x0) / (x1 - x0 || 1) * (W - P.l - P.r); };
+  var Y = function(v){ return H - P.b - (v - y0) / (y1 - y0 || 1) * (H - P.t - P.b); };
+
+  var svg = '<svg class="chart" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" '+
+            'aria-label="'+esc(ch.label)+' 백분위 그래프">';
+
+  // 3~97 백분위 사이를 옅게 채운다
+  var lo = ch.bands[0].points, hi = ch.bands[4].points;
+  svg += '<path d="M'+lo.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
+         'L'+hi.slice().reverse().map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
+         'Z" fill="currentColor" opacity=".06"/>';
+
+  ch.bands.forEach(function(b){
+    var d = 'M'+b.points.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L');
+    var mid = b.percentile === 50;
+    svg += '<path d="'+d+'" fill="none" stroke="currentColor" opacity="'+(mid?'.45':'.22')+
+           '" stroke-width="'+(mid?1.3:1)+'" stroke-dasharray="'+(mid?'':'3 3')+'"/>';
+    var last = b.points[b.points.length-1];
+    svg += '<text x="'+(X(last.x)-2)+'" y="'+(Y(last.y)-3)+'" font-size="9" fill="currentColor" '+
+           'opacity=".5" text-anchor="end">'+b.percentile+'</text>';
+  });
+
+  // y 축 눈금
+  for(var i=0;i<=3;i++){
+    var v = y0 + (y1-y0)*i/3;
+    svg += '<text x="4" y="'+(Y(v)+3)+'" font-size="9" fill="currentColor" opacity=".55">'+
+           v.toFixed(v<20?1:0)+'</text>';
+  }
+  // x 축 (개월)
+  var months = x1/30.44, stepM = months<=8?2:months<=20?4:months<=40?6:12;
+  for(var mth=0; mth<=months; mth+=stepM){
+    var px = X(mth*30.44);
+    svg += '<text x="'+px+'" y="'+(H-6)+'" font-size="9" fill="currentColor" opacity=".55" '+
+           'text-anchor="middle">'+mth+'개월</text>';
+  }
+
+  if(ch.points.length){
+    svg += '<path d="M'+ch.points.map(function(p){ return X(p.x).toFixed(1)+','+Y(p.y).toFixed(1); }).join('L')+
+           '" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    ch.points.forEach(function(p){
+      svg += '<circle cx="'+X(p.x).toFixed(1)+'" cy="'+Y(p.y).toFixed(1)+'" r="3.2" fill="var(--accent)">'+
+             '<title>'+esc(p.date)+' · '+p.y+' · '+Math.round(p.percentile)+'p</title></circle>';
+    });
+  }
+  return svg + '</svg>';
+}
+
+/* ── 일정 ────────────────────────────────────────────── */
+var SFILTER = 'todo';
+function renderSched(){
+  call('schedule', { childId: S.childId }).then(function(d){
+    var h = '<div class="tabs">'+
+      [['todo','남은 것'],['all','전체'],['done','완료']].map(function(p){
+        return '<button class="'+(SFILTER===p[0]?'on':'')+'" onclick="setSF(\''+p[0]+'\')">'+p[1]+'</button>';
+      }).join('')+'</div>';
+
+    var items = d.items.filter(function(it){
+      if(SFILTER==='todo') return !it.doneDate;
+      if(SFILTER==='done') return !!it.doneDate;
+      return true;
+    });
+
+    var groups = {};
+    items.forEach(function(it){
+      var g = it.code==='영유아'||it.code==='구강' ? '건강검진' : it.code==='admin' ? '행정' : '예방접종';
+      (groups[g] = groups[g] || []).push(it);
+    });
+
+    ['예방접종','건강검진','행정'].forEach(function(g){
+      if(!groups[g]) return;
+      h += '<h2>'+g+' <span class="n">'+groups[g].length+'</span></h2>';
+      groups[g].forEach(function(it){
+        if(it.needsChoice){ h += choiceCard(it); return; }
+        if(it.doneDate){
+          h += '<div class="card row done"><div class="grow"><div class="title">'+esc(it.name)+
+               (it.dose?' <span class="n">'+it.dose+'차</span>':'')+'</div>'+
+               '<div class="sub">'+esc(it.doneDate)+' 완료</div></div>'+
+               '<button class="act ghost" onclick="undo(\''+esc(it.key)+'\')">취소</button></div>';
+        } else {
+          h += itemCard(it, it.status==='open'?'green':it.status==='overdue'?'red':'');
+        }
+      });
+    });
+    h += '<div class="banner info" style="margin-top:16px">'+esc(d.comboNote)+'</div>';
+    h += footNote();
+    view(h);
+  }).catch(fail);
+}
+function setSF(f){ SFILTER = f; go('sched'); }
+function undo(key){
+  call('scheduleUndone', { childId: S.childId, key: key })
+    .then(function(){ toast('완료를 취소했습니다'); go('sched'); }).catch(function(e){ toast(e.message); });
+}
+
+/* ── 기록 ────────────────────────────────────────────── */
+var LOGTYPES = [['수유','🍼'],['식사','🍚'],['수면','😴'],['배변','💩'],['체온','🌡'],['투약','💊']];
+function renderLog(){
+  call('logs', { childId: S.childId, days: 2 }).then(function(d){
+    var h = '<div class="quick">'+LOGTYPES.map(function(t){
+      return '<button onclick="quickLog(\''+t[0]+'\')"><span class="ic">'+t[1]+'</span>'+t[0]+'</button>';
+    }).join('')+'</div>';
+
+    h += '<div class="card"><div class="row" style="gap:8px">'+
+      '<input id="memoText" placeholder="인수인계 메모 (예: 낮잠 짧았음)" style="flex:1">'+
+      '<button class="act" onclick="quickLog(\'메모\')">남기기</button></div></div>';
+
+    h += '<h2>오늘</h2><div class="card">'+summaryLine(d.summary)+'</div>';
+
+    h += '<h2>최근 기록 <span class="n">'+d.rows.length+'</span></h2>';
+    if(!d.rows.length) h += '<div class="empty">기록이 없습니다</div>';
+    d.rows.forEach(function(r){
+      var t = LOGTYPES.filter(function(x){ return x[0]===r.type; })[0];
+      h += '<div class="card row"><span style="font-size:20px">'+(t?t[1]:'📝')+'</span>'+
+        '<div class="grow"><div class="title">'+esc(r.type)+
+        (r.v1?' <span class="n">'+esc(r.v1)+(r.v2?'~'+esc(r.v2):'')+'</span>':'')+'</div>'+
+        '<div class="sub">'+esc(r.at)+(r.by?' · '+esc(r.by):'')+
+        (r.detail?' · '+esc(r.detail):'')+'</div></div>'+
+        '<button class="act ghost" onclick="logDel(\''+esc(r.id)+'\')">삭제</button></div>';
+    });
+    h += footNote();
+    view(h);
+  }).catch(fail);
+}
+
+function quickLog(type){
+  if(type==='메모'){
+    var m = $('memoText').value.trim();
+    if(!m) return toast('내용을 입력해 주세요');
+    return call('logAdd',{childId:S.childId,type:'메모',detail:m})
+      .then(function(){ toast('남겼습니다'); go('log'); }).catch(function(e){ toast(e.message); });
+  }
+  var fields = {
+    '수유': '<label>양 / 종류</label><input id="q1" placeholder="예: 160ml 분유">',
+    '식사': '<label>먹은 것</label><input id="q1" placeholder="예: 소고기죽 2/3">',
+    '수면': '<div class="grid2"><div><label>잠든 시각</label><input id="q1" type="time"></div>'+
+            '<div><label>깬 시각</label><input id="q2" type="time"></div></div>',
+    '배변': '<label>상태</label><select id="q1"><option>보통</option><option>묽음</option>'+
+            '<option>단단함</option><option>설사</option></select>',
+    '체온': '<label>체온 (℃)</label><input id="q1" type="number" step="0.1" inputmode="decimal" placeholder="36.8">',
+    '투약': '<label>약 이름</label><input id="q1" placeholder="처방받은 약 이름">'+
+            '<label>복용량 (처방대로 입력)</label><input id="q2" placeholder="예: 4ml">'+
+            '<div class="banner warn" style="margin-top:10px">용량은 자동 계산하지 않습니다. '+
+            '처방전에 적힌 대로 입력하세요.</div>'
+  }[type] || '';
+  openDialog('<div class="title">'+esc(type)+' 기록</div>'+fields+
+    '<label>메모 (선택)</label><input id="qd">'+
+    '<div class="row" style="margin-top:14px;gap:8px">'+
+    '<button class="act ghost grow" onclick="closeDialog()">취소</button>'+
+    '<button class="act grow" onclick="submitLog(\''+type+'\')">기록</button></div>');
+}
+function submitLog(type){
+  var q1 = $('q1'), q2 = $('q2'), qd = $('qd');
+  call('logAdd', { childId: S.childId, type: type,
+                   v1: q1?q1.value:'', v2: q2?q2.value:'', detail: qd?qd.value:'' })
+    .then(function(){ closeDialog(); toast('기록했습니다'); go('log'); })
+    .catch(function(e){ toast(e.message); });
+}
+function logDel(id){
+  call('logDelete', { id: id }).then(function(){ toast('삭제했습니다'); go('log'); })
+    .catch(function(e){ toast(e.message); });
+}
+
+/* ── 아이 설정 ───────────────────────────────────────── */
+function openChildForm(){ renderChildForm(false); }
+function renderChildForm(first){
+  var c = S.children.filter(function(x){ return x.id===S.childId; })[0] || {};
+  var h = (first ? '<div class="banner info">아이 정보를 먼저 등록해 주세요. '+
+                   '생년월일로 접종·검진 일정이 자동 계산됩니다.</div>' : '');
+  h += '<div class="card">'+
+    '<label>이름</label><input id="cName" value="'+esc(c.name||'')+'">'+
+    '<div class="grid2">'+
+    '<div><label>생년월일</label><input id="cBirth" type="date" value="'+esc(c.birthDate||'')+'"></div>'+
+    '<div><label>성별</label><select id="cSex"><option'+(c.sexLabel==='남'?' selected':'')+'>남</option>'+
+    '<option'+(c.sexLabel==='여'?' selected':'')+'>여</option></select></div></div>'+
+    '<div class="grid2">'+
+    '<div><label>혈액형</label><input id="cBlood" placeholder="예: A+"></div>'+
+    '<div><label>알레르기</label><input id="cAllergy" placeholder="없으면 비워두세요"></div></div>'+
+    '<label>특이사항</label><input id="cNote">'+
+    '<button class="act" style="width:100%;margin-top:14px" onclick="saveChild(\''+esc(c.id||'')+'\')">저장</button>'+
+    '</div>';
+  if(!first) h += '<div class="card"><div class="title">아이 추가</div>'+
+    '<div class="sub">위 칸을 비우고 새 이름으로 저장하면 둘째가 추가됩니다.</div>'+
+    '<button class="act ghost" style="width:100%;margin-top:10px" onclick="renderChildForm(true)">새로 입력</button></div>';
+  h += footNote();
+  view(h);
+}
+function saveChild(id){
+  call('childSave', { id: id || '', name: $('cName').value, birthDate: $('cBirth').value,
+                      sexLabel: $('cSex').value, blood: $('cBlood').value,
+                      allergy: $('cAllergy').value, note: $('cNote').value })
+    .then(function(r){
+      return call('bootstrap').then(function(d){
+        S.children = d.children; S.childId = r.id;
+        localStorage.setItem('childId', r.id);
+        renderChildSelect(); toast('저장했습니다'); go('today');
+      });
+    }).catch(function(e){ toast(e.message); });
+}
+
+function footNote(){
+  return '<div class="foot">접종·검진 일정은 <b>참고용</b>입니다. '+
+    '최종 확인은 <a href="https://nip.kdca.go.kr" target="_blank" rel="noopener">예방접종도우미</a>와 소아과에서 하세요.<br>'+
+    '성장 백분위는 WHO 성장표준(0~5세) 기준입니다.</div>';
+}
+</script>
+</body>
+</html>

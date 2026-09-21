@@ -64,8 +64,11 @@ function buildVaccinePlan(child, options, done, todayYmd) {
         // 아직 어떤 백신으로 갈지 안 정했으면 선택을 요구하는 항목 하나만 내보낸다
         var opts = [];
         for (var k in v.variants) opts.push({ key: k, label: v.variants[k].label });
-        out.push({ code: v.code, name: v.name, dose: 0, needsChoice: true,
-                   choices: opts, status: ST_OPEN,
+        // 아직 창이 없는 항목이다 — start/end 를 빈 문자열로 둬서
+        // 날짜 계산 함수들이 이 항목을 건너뛰게 한다
+        out.push({ code: v.code, key: v.code + '#choice', name: v.name, dose: 0,
+                   needsChoice: true, choices: opts, status: ST_OPEN,
+                   start: '', end: '',
                    note: '백신 종류를 먼저 고르면 일정이 계산됩니다' });
         continue;
       }
@@ -158,6 +161,7 @@ function planDigest(plan, todayYmd, horizonDays) {
     if (it.status === ST_DONE) { g.done.push(it); continue; }
     if (it.status === ST_OVERDUE) { g.overdue.push(it); continue; }
     if (it.status === ST_OPEN) { g.open.push(it); continue; }
+    if (!it.start) { g.open.push(it); continue; }
     if (daysBetween(todayYmd, it.start) <= horizon) g.soon.push(it);
     else g.later.push(it);
   }
@@ -167,13 +171,17 @@ function planDigest(plan, todayYmd, horizonDays) {
   return g;
 }
 
-/** 마감까지 남은 일수. 지났으면 음수. */
-function daysLeft(item, todayYmd) { return daysBetween(todayYmd, item.end); }
+/** 마감까지 남은 일수. 지났으면 음수. 창이 없는 항목(백신 종류 미선택)은 null. */
+function daysLeft(item, todayYmd) {
+  if (!item.end) return null;
+  return daysBetween(todayYmd, item.end);
+}
 
 /** "D-12" / "D+3(지남)" */
 function dDayText(item, todayYmd) {
-  var n = daysLeft(item, todayYmd);
   if (item.doneDate) return '완료 ' + item.doneDate;
+  var n = daysLeft(item, todayYmd);
+  if (n == null) return '';
   if (n < 0) return 'D+' + (-n) + ' 지남';
   if (n === 0) return '오늘 마감';
   return 'D-' + n;
@@ -181,7 +189,7 @@ function dDayText(item, todayYmd) {
 
 /** 마감 임박 경고가 필요한가 (무료 검진을 놓치면 돈이 든다) */
 function needsAlert(item, todayYmd) {
-  if (item.doneDate) return false;
+  if (item.doneDate || !item.end) return false;
   if (item.status === ST_OVERDUE) return true;
   return item.status === ST_OPEN && daysLeft(item, todayYmd) <= 21;
 }

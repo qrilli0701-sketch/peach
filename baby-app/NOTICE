@@ -1,0 +1,18 @@
+WHO Child Growth Standards 데이터
+==================================
+
+src/data_lms.gs 의 LMS 파라미터는 세계보건기구(WHO)가 발표한
+WHO Child Growth Standards 표를 계산용으로 재수록한 것입니다.
+
+출처: https://www.who.int/tools/child-growth-standards
+추출 경로: npm 패키지 who-growth-standards@1.0.1 에 번들된 공식 표
+           → tools/gen_lms.js 로 격자를 줄여 재생성 (손으로 편집하지 않음)
+
+이 프로젝트는 WHO 와 제휴·보증 관계가 없으며, 기준 데이터의 저작권은 WHO 에 있습니다.
+
+표준예방접종일정 및 영유아 건강검진 일정
+=======================================
+
+src/data_schedule.gs 의 일정은 대한민국 질병관리청 표준예방접종일정표와
+국민건강보험공단 영유아 건강검진 일정을 참고해 작성한 것입니다.
+참고용이며, 최종 확인은 예방접종도우미(https://nip.kdca.go.kr)와 의료진에게 받으십시오.

@@ -1,4 +1,15 @@
-const m=require('./package/dist/index.cjs'); const fs=require('fs');
+/**
+ * src/data_lms.gs 재생성.
+ *   npm install && npm run gen:lms
+ *
+ * WHO 원본은 0~1856일 일 단위 표라 그대로 넣으면 350KB 가 넘는다.
+ * 오차를 재면서 격자를 줄인다: 0~31일 매일 / ~1년 매주 / 이후 매월,
+ * 24개월(730~731일, 누운 키 → 선 키 전환)의 불연속 지점은 경계로 고정.
+ * 실제 오차는 test/growth.reference.test.js 가 전 구간에서 다시 검증한다.
+ */
+const m = require('who-growth-standards');
+const fs = require('fs');
+const path = require('path');
 const SEX=['male','female'], AGE=['wfa','lhfa','hcfa','bfa'], LEN=['wfl','wfh'];
 const MONTH=365.25/12, BREAKS=[730,731];
 
@@ -54,8 +65,9 @@ var LMS_TABLES = {
 out += Object.entries(TB).map(([k,v])=>
 `  ${k}: { x: '${v.x}', L: ${j(v.L)}, M: ${j(v.M)}, S: ${j(v.S)} }`).join(',\n');
 out += '\n};\n';
-fs.mkdirSync('out',{recursive:true});
-fs.writeFileSync('out/data_lms.gs', out);
-console.log('bytes', fs.statSync('out/data_lms.gs').size, '| age anchors', X.age.length,
-            '| wfl', X.wfl.length, '| wfh', X.wfh.length);
-fs.writeFileSync('out/gen_lms.js', fs.readFileSync('gen.js'));
+const dest = path.join(__dirname, '..', 'src', 'data_lms.gs');
+fs.writeFileSync(dest, out);
+console.log('생성:', dest);
+console.log('  크기', fs.statSync(dest).size, '바이트');
+console.log('  격자 — 연령', X.age.length, '/ wfl', X.wfl.length, '/ wfh', X.wfh.length, '지점');
+console.log('  오차 검증은 npm test (growth.reference.test.js) 에서 합니다.');
