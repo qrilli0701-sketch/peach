@@ -1,0 +1,13 @@
+{
+  "name": "baby-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "아이 관리 웹앱 (Google Apps Script) — 순수 로직 단위테스트",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "gen:lms": "node tools/gen_lms.js"
+  },
+  "devDependencies": {
+    "who-growth-standards": "^1.0.1"
+  }
+}
