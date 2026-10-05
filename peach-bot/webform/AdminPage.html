@@ -155,7 +155,7 @@
         <button class="tab" data-tab="done" onclick="setTab('done')">확인됨 <span class="n" id="n-done">0</span></button>
         <button class="tab" data-tab="all" onclick="setTab('all')">전체 <span class="n" id="n-all">0</span></button>
       </div>
-      <input id="q" type="search" placeholder="이름이나 전화번호 뒷자리로 찾기" oninput="render()">
+      <input id="q" type="search" placeholder="이름, 주소, 전화번호, 비고 아무거나 찾기" oninput="render()">
     </div>
   </header>
   <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
@@ -287,8 +287,12 @@
   function matches(g, q) {
     if (!q) return true;
     var qd = q.replace(/[^0-9]/g, '');
-    var hay = [g.sender].concat(g.items.map(function (i) { return i.name; })).join(' ');
-    if (hay.indexOf(q) !== -1) return true;
+    // 이름·주소·비고·상태·확인자·수량 등 화면에 있는 글자는 전부 검색 대상 (대소문자·띄어쓰기 무시)
+    var squash = function (t) { return String(t || '').toLowerCase().replace(/\s+/g, ''); };
+    var hay = [g.sender, g.senderPhone, g.time, g.by].concat(g.items.map(function (i) {
+      return [i.name, i.phone, i.addr, i.note, i.status, i.qty, i.by].join(' ');
+    })).join(' ');
+    if (squash(hay).indexOf(squash(q)) !== -1) return true;
     if (qd.length >= 3) {
       var phones = [g.senderPhone].concat(g.items.map(function (i) { return i.phone; })).join(' ').replace(/[^0-9 ]/g, '');
       if (phones.indexOf(qd) !== -1) return true;
