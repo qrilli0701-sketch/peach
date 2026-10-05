@@ -17,6 +17,7 @@ var ADMIN_DONE = { '확인': true, '완료': true };   // 확인된 것으로 �
 function adminPage_() {
   return HtmlService.createHtmlOutputFromFile('AdminPage')
     .setTitle('임가네 주문 확인')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)   // 설치용 앱 페이지(docs/)가 감싸서 보여줄 수 있게. 비밀번호 없이는 아무것도 안 보임
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

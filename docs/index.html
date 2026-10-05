@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FFF6F0">
+<title>복숭아 관리자</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  html,body{margin:0;height:100%;background:#FFF6F0}
+  iframe{position:fixed;inset:0;width:100%;height:100%;border:0;background:#FFF6F0}
+  .fb{position:fixed;inset:auto 0 12px 0;text-align:center;font:14px sans-serif;color:#6E5D50;pointer-events:none}
+  .fb a{pointer-events:auto;color:#CF4B33}
+</style>
+</head>
+<body>
+<iframe id="app" src="https://script.google.com/macros/s/AKfycbwCgHUPMTPaMFJzYqF3zSdmKN-lhcGNnW8eY-zTh27G1ginYtC74EgRpwpmZ04VepYH/exec?admin" allow="autoplay; screen-wake-lock; clipboard-write; fullscreen" title="복숭아 관리자"></iframe>
+<div class="fb">화면이 안 열리면 <a href="https://script.google.com/macros/s/AKfycbwCgHUPMTPaMFJzYqF3zSdmKN-lhcGNnW8eY-zTh27G1ginYtC74EgRpwpmZ04VepYH/exec?admin">여기를 눌러 주세요</a></div>
+<script>
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+  setTimeout(function () { var f = document.querySelector('.fb'); if (f) f.style.opacity = .0; }, 8000);
+</script>
+</body>
+</html>
