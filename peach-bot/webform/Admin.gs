@@ -80,6 +80,11 @@ function adminList(token) {
     g.sheet1 = sheet1;
     return g;
   });
+  var prev = adminPrevMap_();
+  groups.forEach(function (g) {
+    var ph = String(g.senderPhone || '').replace(/[^0-9]/g, '');
+    g.prev = (prev.sender[ph] || prev.recv[ph] || []);   // 작년(26년)에 이 번호의 주문을 받았던 사람들
+  });
   groups.sort(function (a, b) { return b.lastRow - a.lastRow; });
   return { groups: groups };
 }
@@ -164,4 +169,25 @@ function adminToken_() {
 
 function adminCheck_(token) {
   if (!token || token !== adminToken_()) throw new Error('AUTH');
+}
+
+/**
+ * '26년주문받은사람' 탭(구분·이름·전화번호·주문받은사람·건수)을 읽어 전화번호 → 받았던 사람 목록으로 만든다.
+ * 보낸분 번호를 먼저, 없으면 받는분 번호로 찾는다. 탭이 없으면 빈 결과(화면에 표시만 안 됨).
+ * 주문받은사람 칸은 '엄마' 또는 '아빠2/엄마2'(여러 명이면 많은 순) 형식.
+ */
+function adminPrevMap_() {
+  var out = { sender: {}, recv: {} };
+  try {
+    var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName('26년주문받은사람');
+    if (!sh || sh.getLastRow() < 2) return out;
+    sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues().forEach(function (r) {
+      var ph = String(r[2] || '').replace(/[^0-9]/g, '');
+      if (!ph) return;
+      var names = String(r[3] || '').split('/').map(function (t) { return t.replace(/[0-9\s]/g, ''); })
+                                      .filter(function (t) { return t; });
+      (r[0] === '보낸분' ? out.sender : out.recv)[ph] = names;
+    });
+  } catch (e) {}
+  return out;
 }

@@ -83,6 +83,7 @@
     .p-new{background:var(--accent-soft);color:var(--accent-dk)}
     .p-ok{background:var(--ok-soft);color:var(--ok)}
     .p-warn{background:#FFE36E;color:#5C4A00}
+    .p-prev{background:#EAF3E6;color:#3F6B33}
     .p-mail{background:var(--panel-2);color:var(--soft);border:1px solid var(--line)}
     .empty{text-align:center;color:var(--soft);padding:50px 0;font-size:.92rem}
 
@@ -325,6 +326,7 @@
         : '<span class="pill p-new">미확인</span>';
       if (g.warn && !g.checked) pills += '<span class="pill p-warn">빠진 칸</span>';
       if (g.mail) pills += '<span class="pill p-mail">메일</span>';
+      if (g.prev && g.prev.length) pills += '<span class="pill p-prev">작년 ' + esc(g.prev.join('·')) + '</span>';
       return '<button class="' + cls + '" onclick="openDetail(\'' + encodeURIComponent(g.key) + '\')">' +
         '<div class="l1"><span class="sender">' + esc(g.sender || '(보내는분 없음)') + '</span>' +
         '<span class="boxes">' + (g.boxes ? g.boxes + '박스' : '박스 ?') + '</span></div>' +
@@ -357,7 +359,8 @@
     var html = '<div class="sec">보내는 분</div><div class="rc">' +
       '<div class="nm">' + esc(g.sender || '') + (g.sender ? '' : '<span class="miss">없음</span>') + '</div>' +
       '<div class="row"><span class="k">전화</span><span class="v">' + telLink(g.senderPhone) + '</span></div>' +
-      '<div class="meta">접수 ' + esc(g.time) + '</div>';
+      '<div class="meta">접수 ' + esc(g.time) + '</div>' +
+      (g.prev && g.prev.length ? '<div class="meta">작년(26년)에 주문받은 사람: <b>' + esc(g.prev.join(', ')) + '</b></div>' : '');
     g.items.forEach(function (it) { var n = splitNote(it.note); if (n.mail) mail = n.mail; });
     if (mail) html += '<div class="meta">메일로 접수 · ' + esc(mail) + '</div>';
     html += '</div>';
