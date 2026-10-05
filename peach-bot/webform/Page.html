@@ -9,88 +9,97 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
   <style>
     :root{
-      --ground:#FBF5EF; --panel:#FFFFFF; --panel-2:#F7EEE5;
+      --ground:#FFF6F0; --panel:#FFFFFF; --panel-2:#FFF0E8;
       --ink:#2C221B; --soft:#6E5D50; --line:#E6D8CA;
-      --accent:#E0673F; --accent-dk:#C6552F; --accent-soft:#F7DFD3;
-      --danger:#C0392B; --shadow:0 1px 2px rgba(60,40,25,.05),0 8px 24px rgba(60,40,25,.07);
+      --accent:#EC6249; --accent-dk:#CF4B33; --accent-soft:#FFE3D8;
+      --grad:linear-gradient(135deg,#FF9F7A 0%,#F0604D 100%);
+      --danger:#C0392B; --shadow:0 2px 4px rgba(120,50,30,.04),0 12px 32px rgba(120,50,30,.08);
     }
     @media (prefers-color-scheme:dark){:root{
       --ground:#1E1712; --panel:#2A211B; --panel-2:#332821;
       --ink:#F1E7DD; --soft:#B7A596; --line:#42342A;
       --accent:#F08A63; --accent-dk:#F5A582; --accent-soft:#4A2E22;
+      --grad:linear-gradient(135deg,#F59B78 0%,#E5604C 100%);
       --danger:#E8776A; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
     }}
     *{box-sizing:border-box}
     body{margin:0;background:var(--ground);color:var(--ink);
       font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo",sans-serif;
-      line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 0 110px}
+      line-height:1.6;letter-spacing:-.01em;-webkit-font-smoothing:antialiased;padding:0 0 120px}
     .wrap{max-width:540px;margin:0 auto;padding:0 18px}
 
     /* 상단 사진 배너 */
-    .banner{max-width:540px;margin:0 auto 0;height:190px;overflow:hidden;
-      background:linear-gradient(135deg,#F3B9A0,#E0673F);
+    .banner{max-width:540px;margin:0 auto 0;height:210px;overflow:hidden;
+      border-radius:0 0 28px 28px;box-shadow:0 10px 28px rgba(200,80,50,.18);
+      background:var(--grad);
       display:flex;align-items:center;justify-content:center}
     .banner img{width:100%;height:100%;object-fit:cover;display:block}
     .banner .ph{font-size:3.2rem}
 
-    .hero{text-align:center;margin:22px 0 18px}
-    .hero h1{font-family:"Gowun Batang",serif;font-size:1.8rem;margin:0 0 4px}
-    .hero p{color:var(--soft);font-size:.9rem;margin:0}
+    .hero{text-align:center;margin:26px 0 22px}
+    .hero h1{font-family:"Gowun Batang",serif;font-size:2.05rem;line-height:1.25;margin:0 0 10px;letter-spacing:-.02em}
+    .hero p{display:inline-block;background:var(--accent-soft);color:var(--accent-dk);font-size:.85rem;
+      font-weight:500;margin:0;padding:5px 14px;border-radius:999px}
 
     /* 안내 카드 */
-    .info{border:1px solid var(--line);border-radius:16px;background:var(--panel-2);
-      padding:16px 18px;margin-bottom:18px;font-size:.86rem}
+    .info{border:1px solid var(--accent-soft);border-radius:20px;background:var(--panel-2);
+      padding:20px 20px;margin-bottom:20px;font-size:.88rem;box-shadow:var(--shadow)}
     .info h3{font-family:"Gowun Batang",serif;color:var(--accent);font-size:1rem;margin:0 0 8px}
     .info h3:not(:first-child){margin-top:16px}
     .info p{margin:3px 0;color:var(--ink)}
     .info .em{font-weight:700}
     .info .small{color:var(--soft);font-size:.8rem}
 
-    fieldset{border:1px solid var(--line);border-radius:16px;background:var(--panel);
-      margin:0 0 18px;padding:16px 18px 20px;box-shadow:var(--shadow)}
+    fieldset{border:1px solid var(--line);border-radius:20px;background:var(--panel);
+      margin:0 0 18px;padding:16px 20px 22px;box-shadow:var(--shadow)}
     legend{font-family:"Gowun Batang",serif;font-weight:700;font-size:1rem;padding:0 8px;color:var(--accent)}
     label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 5px;color:var(--soft)}
-    input{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:10px;
-      font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit;transition:border-color .15s}
+    input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
+      font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit;transition:border-color .15s,box-shadow .15s}
     input::placeholder{color:var(--soft);opacity:.55}
-    input:focus{outline:none;border-color:var(--accent)}
+    .r-addr::placeholder{font-size:.86rem}
+    input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
     input.bad{border-color:var(--danger);background:rgba(192,57,43,.05)}
 
-    .rcard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;
+    .rcard{border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:14px;
       background:var(--panel);box-shadow:var(--shadow)}
     .rhead{display:flex;align-items:center;gap:8px}
     .rhead .badge{display:inline-flex;align-items:center;justify-content:center;
-      width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent-dk);
+      width:26px;height:26px;border-radius:50%;background:var(--grad);color:#fff;
       font-size:.8rem;font-weight:700}
     .rhead b{font-size:.9rem;flex:1}
     .del{background:none;border:none;color:var(--danger);font-size:.8rem;cursor:pointer;padding:6px 4px;font-family:inherit}
     .grid2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 
     button.add{width:100%;padding:14px;border:1.5px dashed var(--accent);background:transparent;
-      color:var(--accent);border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;
-      font-family:inherit;margin-bottom:8px}
+      color:var(--accent);border-radius:16px;font-size:.95rem;font-weight:700;cursor:pointer;
+      font-family:inherit;margin-bottom:10px}
     button.add:active{background:var(--accent-soft)}
 
-    .bulk{border:1.5px solid var(--accent-soft);border-radius:14px;background:var(--panel-2);
+    .bulk{border:1.5px solid var(--accent-soft);border-radius:18px;background:var(--panel-2);
       padding:16px 18px;margin:6px 0 10px;font-size:.84rem}
     .bulk .bulk-title{font-family:"Gowun Batang",serif;font-weight:700;font-size:1rem;
       color:var(--accent);margin:0 0 8px}
     .bulk p{margin:0 0 12px;color:var(--soft);line-height:1.6}
     .bulk p b{color:var(--accent);font-weight:700}
     .bulk-btn{display:inline-block;padding:11px 16px;border-radius:10px;background:var(--panel);
-      border:1.5px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none;font-size:.9rem}
+      border:1.5px solid var(--accent);color:var(--accent);font-weight:700;text-decoration:none;font-size:.9rem;
+      box-shadow:0 2px 6px rgba(200,80,50,.12)}
     .bulk-btn:active{background:var(--accent-soft)}
+    .bulk-actions{display:flex;flex-wrap:wrap;gap:8px}
+    button.bulk-btn{cursor:pointer;font-family:inherit}
 
     .footbar{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
-      border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(60,40,25,.08);
+      border-top:1px solid var(--line);border-radius:22px 22px 0 0;box-shadow:0 -8px 28px rgba(120,50,30,.12);
       padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:10}
     .footbar .inner{max-width:540px;margin:0 auto;display:flex;align-items:center;gap:12px}
     .tally{flex:1;font-size:.8rem;color:var(--soft);line-height:1.35}
     .tally b{color:var(--ink);font-weight:700}
     .tally .amt{color:var(--accent);font-weight:700}
-    button.submit{flex:none;padding:14px 24px;border:none;background:var(--accent);color:#fff;
-      border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit}
-    button.submit:active{background:var(--accent-dk)}
+    button.submit{flex:none;padding:14px 26px;border:none;background:var(--grad);color:#fff;
+      border-radius:14px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;
+      box-shadow:0 6px 16px rgba(236,98,73,.35)}
+    button.submit:active{transform:scale(.97)}
     button.submit:disabled{opacity:.5}
 
     .err{color:var(--danger);font-size:.82rem;margin:8px 0 0;min-height:1em;text-align:center}
@@ -145,7 +154,10 @@
         <p class="bulk-title">📦 대량 주문은 여기로!</p>
         <p>받는 분이 많으시면 엑셀 양식으로 한 번에 주문하실 수 있어요.<br>
            ① 양식 내려받기 → ② 작성 → ③ <b>qrilli0701@gmail.com</b> 으로 메일 전송</p>
-        <a class="bulk-btn" id="bulkLink" href="#">📄 대량주문 엑셀 양식 내려받기</a>
+        <div class="bulk-actions">
+          <a class="bulk-btn" id="bulkLink" href="#">📄 대량주문 엑셀 양식 내려받기</a>
+          <button type="button" class="bulk-btn" id="copyMail" onclick="copyMail()">📋 메일주소 복사</button>
+        </div>
       </div>
 
       <p class="err" id="formErr"></p>
@@ -185,6 +197,22 @@
     document.getElementById('bulkBox').style.display = 'block';
   }
 
+  var BULK_MAIL = 'qrilli0701@gmail.com';
+  function copyMail(){
+    var btn = document.getElementById('copyMail');
+    function ok(){ btn.textContent = '✅ 복사됐어요'; setTimeout(function(){ btn.textContent = '📋 메일주소 복사'; }, 1800); }
+    function fallback(){
+      var t = document.createElement('textarea');
+      t.value = BULK_MAIL; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); ok(); } catch (e) { window.prompt('메일주소를 복사해 주세요', BULK_MAIL); }
+      document.body.removeChild(t);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(BULK_MAIL).then(ok, fallback);
+    } else { fallback(); }
+  }
+
   var idx = 0;
   function addRecipient(){
     idx++;
@@ -197,7 +225,7 @@
       '<label>연락처 <span class="hint">(- 없이 11자리)</span></label>' +
       '<input class="r-phone" inputmode="numeric" maxlength="11" placeholder="01098765432">' +
       '<label>주소 <span class="hint">(동·호수까지)</span></label>' +
-      '<input class="r-addr" placeholder="서울시 ...">' +
+      '<input class="r-addr" placeholder="서울시 강남구 테헤란로 123, 101동 1001호">' +
       '<label>수량(박스)</label><input class="r-qty" inputmode="numeric" placeholder="1" oninput="updateTally()">' +
       '<label>비고 <span class="hint">(선택)</span></label>' +
       '<input class="r-note" placeholder="">';
