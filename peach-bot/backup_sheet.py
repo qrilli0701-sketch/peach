@@ -35,7 +35,7 @@ creds = Credentials.from_service_account_file(
     scopes=["https://www.googleapis.com/auth/spreadsheets"],
 )
 sheet = with_retry(
-    lambda: gspread.authorize(creds).open_by_key(os.getenv("SPREADSHEET_ID")).sheet1
+    lambda: gspread.authorize(creds).open_by_key(os.getenv("SPREADSHEET_ID")).worksheet("시트1")
 )
 print(f"시트 열기 완료: {sheet.spreadsheet.title} / {sheet.title}")
 

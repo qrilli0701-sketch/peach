@@ -50,7 +50,7 @@ print("\n=== 3. 스프레드시트 접근 (읽기 전용) ===")
 if creds:
     try:
         import gspread
-        sheet = gspread.authorize(creds).open_by_key(env["SPREADSHEET_ID"]).sheet1
+        sheet = gspread.authorize(creds).open_by_key(env["SPREADSHEET_ID"]).worksheet("시트1")
         report(OK, "시트 열기", f"제목: {sheet.spreadsheet.title} / 탭: {sheet.title}")
 
         HEADERS = ["입력시각", "받는사람", "받는분전화번호", "수량", "주소",

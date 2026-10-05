@@ -64,7 +64,7 @@ def get_sheet():
         cred_file = os.path.join(base, cred_file)
     creds = Credentials.from_service_account_file(
         cred_file, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-    return gspread.authorize(creds).open_by_key(os.getenv("SPREADSHEET_ID")).sheet1
+    return gspread.authorize(creds).open_by_key(os.getenv("SPREADSHEET_ID")).worksheet("시트1")
 
 
 def clear_validation(sheet):
