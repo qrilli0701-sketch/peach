@@ -28,3 +28,4 @@ logs/
 # 관리자 비밀번호 초기값 (clasp 배포 때만 만들어 push, 레포는 공개)
 AdminSecret.gs
 **/AdminSecret.gs
+peach-bot/webform/TestMail.gs

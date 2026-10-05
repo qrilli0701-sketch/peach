@@ -106,11 +106,11 @@ function appendToQueue_(rows, msg) {
   var data = rows.map(function (r) {
     // r: [받는사람, 받는전화, 수량, 주소, 보내는사람, 보내는전화, 비고]
     var miss = [];
-    if (!r[1]) miss.push('받는분전화');
+    if (!r[1] || r[1].length !== 11) miss.push('받는분전화');  // 자릿수만 자동 검증
     if (!r[2] || !/^[0-9]+$/.test(r[2]) || parseInt(r[2], 10) < 1) miss.push('수량');
     if (!r[3]) miss.push('주소');
     if (!r[4]) miss.push('보내는사람');
-    if (!r[5]) miss.push('보내는분전화');
+    if (!r[5] || r[5].length !== 11) miss.push('보내는분전화');
     var status = miss.length ? '확인필요' : '접수';
     var bigo = (r[6] ? r[6] + ' ' : '') + '[메일:' + from + ']' +
                (miss.length ? ' [미비:' + miss.join(',') + ']' : '');
@@ -129,6 +129,7 @@ function appendToQueue_(rows, msg) {
 /** 숫자만 남기고, 앞자리 0 이 사라진 10자리(1로 시작)면 0 을 붙여 11자리로 복원 */
 function normPhone_(val) {
   var d = String(val == null ? '' : val).replace(/[^0-9]/g, '');
+  if (d.length === 12 && d.indexOf('82') === 0) d = '0' + d.substring(2);   // +82 10-... → 010-...
   if (d.length === 10 && d.charAt(0) === '1') d = '0' + d;
   return d;
 }
