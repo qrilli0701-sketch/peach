@@ -473,10 +473,9 @@
   function dayLabel(k) { return k.slice(5, 7) + '/' + k.slice(8, 10); }
   var spDays = [];
   function renderStats() {
-    var G = state.groups, boxes = 0, todo = 0, amount = 0, byDay = {}, ordersByDay = {};
+    var G = state.groups, boxes = 0, todo = 0, byDay = {}, ordersByDay = {};
     G.forEach(function (g) {
       boxes += g.boxes || 0; if (!g.checked) todo++;
-      g.items.forEach(function (it) { var q = parseInt(it.qty, 10); if (q > 0) amount += q * 40000 + Math.ceil(q / 2) * 5000; });
       var k = dayKey(g.time); if (!k) return;
       byDay[k] = (byDay[k] || 0) + (g.boxes || 0); ordersByDay[k] = (ordersByDay[k] || 0) + 1;
     });
@@ -487,7 +486,7 @@
     for (var k = first, guard = 0; k <= today && guard < 40; k = dayAdd(k, 1), guard++) spDays.push({ k: k, v: byDay[k] || 0, n: ordersByDay[k] || 0 });
     var tile = function (cls, v, unit, label) { return '<div class="tile ' + cls + '"><div class="v">' + v + '<small>' + unit + '</small></div><div class="k">' + label + '</div></div>'; };
     var html = '<div class="tiles">' + tile('', G.length, '건', '총 주문') + tile('', boxes, '박스', '총 박스') +
-      tile('todo', todo, '건', '미확인') + tile('', amount ? Math.round(amount / 10000 * 10) / 10 : 0, '만원', '예상 금액') + '</div>';
+      tile('todo', todo, '건', '미확인') + tile('', G.length - todo, '건', '확인됨') + '</div>';
     var n = spDays.length, W = 300, H = 56, P = 6, max = 1;
     spDays.forEach(function (d) { if (d.v > max) max = d.v; });
     var X = function (i) { return n < 2 ? W / 2 : P + i * (W - 2 * P) / (n - 1); };
