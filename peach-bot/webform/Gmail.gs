@@ -1,7 +1,7 @@
 /**
  * 메일로 받은 '대량주문 엑셀'을 자동으로 읽어 '주문접수' 탭에 적재한다.
- * - '임가네접수' 라벨이 붙은 메일만 읽는다 (지메일 필터: 받는 주소 qrilli0701+peach@gmail.com → 라벨 임가네접수)
- *   라벨이 없는 메일(개인·업무 메일)은 열지도, 복사하지도 않는다
+ * - 받는 주소가 qrilli0701+peach@gmail.com (복숭아 전용 별칭)인 메일만 읽는다. 그 외 개인·업무 메일은 열지도, 복사하지도 않는다
+ *   (지메일 필터·라벨 설정 불필요 — 검색 조건으로 직접 찾는다)
  * - 우리 양식(보내는분 = 6행, 받는분 표 = 10행부터)만 인식, 아니면 건너뜀
  * - 처리한 메일에는 라벨을 붙여 중복 처리 방지
  *
@@ -10,11 +10,11 @@
  *  2) setupTrigger() 를 한 번 실행 → 5분마다 자동 확인되는 트리거 생성 (권한 승인)
  */
 var LABEL_DONE = '임가네처리완료';
-var LABEL_IN = '임가네접수';       // 지메일 필터가 붙여주는 라벨 (이 라벨 메일만 읽음)
+var ORDER_ALIAS = 'qrilli0701+peach@gmail.com';   // 손님에게 알려주는 복숭아 전용 주소
 var LABEL_UNK = '임가네미분류';   // 읽지 못한 메일에 붙여 재검사 방지
 var INBOX_SHEET = '미분류';
-var INBOX_HEADERS = ['받은시각', '보낸사람', '제목', '메일날짜', '본문', '첨부', '지메일링크', '상태'];
-var GMAIL_QUERY = 'label:' + LABEL_IN + ' -label:' + LABEL_DONE + ' -label:' + LABEL_UNK + ' newer_than:30d';
+var INBOX_HEADERS = ['받은시각', '보낸사람', '제목', '메일날짜', '첨부', '지메일링크', '상태'];   // 상태가 '대기'면 관리자 화면에 개수만 표시. 확인 후 '처리됨'으로 바꾸면 사라짐
+var GMAIL_QUERY = '(to:' + ORDER_ALIAS + ' OR deliveredto:' + ORDER_ALIAS + ') -label:' + LABEL_DONE + ' -label:' + LABEL_UNK + ' newer_than:30d';
 
 function setupTrigger() {
   // 중복 생성 방지: 기존 processOrderEmails 트리거 제거 후 재생성
@@ -52,7 +52,7 @@ function processOrderEmails() {
   });
 }
 
-/** 우리 양식으로 읽지 못한 메일(사진·PDF·본문 주문·다른 양식)을 '미분류' 탭에 쌓는다. 라벨이 붙은 메일만 여기 온다. */
+/** 우리 양식으로 읽지 못한 메일(사진·PDF·본문 주문·다른 양식)을 '미분류' 탭에 기록한다(본문은 복사하지 않음). 복숭아 전용 주소로 온 메일만 여기 온다. */
 function recordUnknown_(thread) {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sh = ss.getSheetByName(INBOX_SHEET);
@@ -61,10 +61,9 @@ function recordUnknown_(thread) {
   var msgs = thread.getMessages(), m = msgs[msgs.length - 1];
   var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
   var files = m.getAttachments().map(function (a) { return a.getName(); }).join(', ');
-  var body = String(m.getPlainBody() || '').substring(0, 3000);
   sh.appendRow([now, m.getFrom(), m.getSubject(),
                 Utilities.formatDate(m.getDate(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm'),
-                body, files, 'https://mail.google.com/mail/u/0/#all/' + thread.getId(), '대기']);
+                files, 'https://mail.google.com/mail/u/0/#all/' + thread.getId(), '대기']);
 }
 
 /** 첨부 xlsx 를 Google 시트로 변환하고 파일 id 반환 (Drive 고급서비스 v2/v3 모두 지원) */
