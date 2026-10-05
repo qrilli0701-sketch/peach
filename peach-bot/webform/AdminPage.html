@@ -138,7 +138,9 @@
     .actbar .primary{margin-top:10px}
     /* 현황 카드 */
     .stats{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow)}
-    .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+    .tiles{display:grid;grid-template-columns:3fr 2fr;gap:0}
+    .tiles .grp{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .tiles .grp.r{grid-template-columns:repeat(2,1fr);border-left:1px solid var(--line, #ecd9cc);padding-left:6px}
     .tile{text-align:center;min-width:0}
     .tile .v{font-size:1.35rem;font-weight:800;line-height:1.15;color:var(--ink);white-space:nowrap}
     .tile .v small{font-size:.7rem;font-weight:700;color:var(--soft);margin-left:1px}
@@ -485,8 +487,9 @@
     spDays = [];
     for (var k = first, guard = 0; k <= today && guard < 40; k = dayAdd(k, 1), guard++) spDays.push({ k: k, v: byDay[k] || 0, n: ordersByDay[k] || 0 });
     var tile = function (cls, v, unit, label) { return '<div class="tile ' + cls + '"><div class="v">' + v + '<small>' + unit + '</small></div><div class="k">' + label + '</div></div>'; };
-    var html = '<div class="tiles">' + tile('', G.length, '건', '총 주문') + tile('', boxes, '박스', '총 박스') +
-      tile('todo', todo, '건', '미확인') + tile('', G.length - todo, '건', '확인됨') + '</div>';
+    var html = '<div class="tiles"><div class="grp">' + tile('', G.length, '건', '총 주문') + tile('todo', todo, '건', '미확인') +
+      tile('', G.length - todo, '건', '확인') + '</div><div class="grp r">' + tile('', byDay[today] || 0, '박스', '오늘 박스') +
+      tile('', boxes, '박스', '총 박스') + '</div></div>';
     var n = spDays.length, W = 300, H = 56, P = 6, max = 1;
     spDays.forEach(function (d) { if (d.v > max) max = d.v; });
     var X = function (i) { return n < 2 ? W / 2 : P + i * (W - 2 * P) / (n - 1); };
