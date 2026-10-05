@@ -10,6 +10,8 @@
  */
 var ADMIN_COL_BY = 10;   // J: 주문받은사람(누구한테 들어온 주문인지, 확인할 때 고른다)
 var ADMIN_COL_AT = 11;   // K: 확인시각
+var ADMIN_COL_MEMO = 12; // L: 메모 (주문 묶음의 첫 줄에만 적는다)
+var ADMIN_COL_LOG = 13;  // M: 수정기록 (누가 언제 무엇을 고쳤는지)
 var ADMIN_DONE = { '확인': true, '완료': true };   // 확인된 것으로 보는 상태
 
 function adminPage_() {
@@ -36,7 +38,7 @@ function adminList(token) {
   var sh = adminSheet_();
   var last = sh.getLastRow();
   if (last < 2) return { groups: [] };
-  var width = Math.max(sh.getLastColumn(), ADMIN_COL_AT);
+  var width = Math.max(sh.getLastColumn(), ADMIN_COL_LOG);
   var v = sh.getRange(2, 1, last - 1, width).getDisplayValues();
 
   var map = {}, order = [];
@@ -55,7 +57,8 @@ function adminList(token) {
     g.lastRow = row;
     g.items.push({
       row: row, sig: adminSig_(r), name: r[1], phone: r[2], qty: r[3], addr: r[4],
-      note: note, status: r[8], by: r[ADMIN_COL_BY - 1], at: r[ADMIN_COL_AT - 1]
+      note: note, status: r[8], by: r[ADMIN_COL_BY - 1], at: r[ADMIN_COL_AT - 1],
+      memo: r[ADMIN_COL_MEMO - 1] || '', log: r[ADMIN_COL_LOG - 1] || ''
     });
   });
 
@@ -77,6 +80,8 @@ function adminList(token) {
     g.by = by;
     g.at = at;
     g.sheet1 = sheet1;
+    g.memo = (g.items[0] && g.items[0].memo) || '';
+    g.log = g.items.map(function (it) { return it.log; }).filter(function (t) { return t; }).join('\n');
     return g;
   });
   groups.sort(function (a, b) { return b.lastRow - a.lastRow; });
@@ -89,7 +94,7 @@ function adminExport(token) {
   var sh = adminSheet_();
   var last = sh.getLastRow();
   if (last < 1) return { rows: [] };
-  var width = Math.max(sh.getLastColumn(), ADMIN_COL_AT);
+  var width = Math.max(sh.getLastColumn(), ADMIN_COL_LOG);
   return { rows: sh.getRange(1, 1, last, width).getDisplayValues() };
 }
 
@@ -144,8 +149,10 @@ function adminSheet_() {
 }
 
 function adminEnsureCols_(sh) {
-  var h = sh.getRange(1, ADMIN_COL_BY, 1, 2).getValues()[0];
-  if (!h[0] || !h[1]) sh.getRange(1, ADMIN_COL_BY, 1, 2).setValues([['주문받은사람', '확인시각']]);
+  var h = sh.getRange(1, ADMIN_COL_BY, 1, 4).getValues()[0];
+  var want = ['주문받은사람', '확인시각', '메모', '수정기록'];
+  var out = h.map(function (t, k) { return t || want[k]; });
+  if (out.join('|') !== h.join('|')) sh.getRange(1, ADMIN_COL_BY, 1, 4).setValues([out]);
 }
 
 /** 한 줄을 알아보는 표식: 접수시각 + 받는사람 + 받는분전화 */
@@ -173,4 +180,90 @@ function adminToken_() {
 
 function adminCheck_(token) {
   if (!token || token !== adminToken_()) throw new Error('AUTH');
+}
+
+/**
+ * 주문 고치기·메모. edits = [{row, sig, name?, phone?, qty?, addr?, note?, sname?, sphone?, memo?}]
+ * 줄이 그사이 바뀌었으면(sig 불일치) 그 줄은 건너뛴다. 글자는 있는 그대로 적고(앞뒤 공백만 정리),
+ * 자동 검증은 전화번호 11자리와 수량(1 이상 숫자)뿐이다. 상태가 접수/확인필요면 빠진 칸에 맞춰 다시 정한다.
+ * 누가 무엇을 고쳤는지는 M열 수정기록에 남긴다.
+ */
+var ADMIN_WHO = ['아빠', '엄마', '종원', '지은', '명석'];
+var ADMIN_FIELD_LABEL = { name: '받는사람', phone: '받는분전화', qty: '수량', addr: '주소', note: '비고',
+                          sname: '보내는사람', sphone: '보내는분전화', memo: '메모' };
+function adminEdit(token, edits, who) {
+  adminCheck_(token);
+  who = String(who || '').trim();
+  if (ADMIN_WHO.indexOf(who) === -1) throw new Error('누가 고쳤는지 먼저 눌러주세요.');
+  var clean = function (t) { return String(t == null ? '' : t).replace(/\r/g, '').trim(); };
+  var digits = function (t) { return String(t == null ? '' : t).replace(/[^0-9]/g, ''); };
+
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = adminSheet_();
+    adminEnsureCols_(sh);
+    var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'MM-dd HH:mm');
+    var plan = [], skipped = 0;
+
+    (edits || []).forEach(function (e) {
+      var row = parseInt(e && e.row, 10);
+      if (!(row >= 2) || row > sh.getLastRow()) { skipped++; return; }
+      var r = sh.getRange(row, 1, 1, ADMIN_COL_LOG).getDisplayValues()[0];
+      if (adminSig_(r) !== e.sig) { skipped++; return; }
+      var cur = { name: r[1], phone: r[2], qty: r[3], addr: r[4], sname: r[5], sphone: r[6], memo: r[ADMIN_COL_MEMO - 1] };
+      var oldNote = r[7] || '';
+      var mail = (oldNote.match(/\[메일:[^\]]*\]/) || [''])[0];
+      cur.note = oldNote.replace(/\[메일:[^\]]*\]/g, '').replace(/\[미비:[^\]]*\]/g, '').trim();
+
+      var next = {}, changes = [];
+      Object.keys(ADMIN_FIELD_LABEL).forEach(function (k) {
+        if (e[k] === undefined) { next[k] = cur[k]; return; }
+        var v = clean(e[k]);
+        if ((k === 'phone' || k === 'sphone') && v) {
+          if (digits(v).length !== 11 || digits(v) !== v.replace(/[^0-9]/g, '')) throw new Error('전화번호는 숫자 11자리로 적어주세요.');
+          v = digits(v);
+        }
+        if (k === 'qty' && v && !/^[0-9]+$/.test(v)) throw new Error('수량은 숫자로 적어주세요.');
+        if (k === 'qty' && v && parseInt(v, 10) < 1) throw new Error('수량은 1 이상이어야 해요.');
+        next[k] = v;
+        if (v !== String(cur[k] || '')) {
+          var show = function (t) { t = String(t || '').replace(/\s+/g, ' '); return t ? (t.length > 28 ? t.slice(0, 28) + '…' : t) : '(빔)'; };
+          changes.push(ADMIN_FIELD_LABEL[k] + (k === 'memo' ? ' 수정' : ' ' + show(cur[k]) + '→' + show(v)));
+        }
+      });
+      if (!changes.length) return;
+
+      var miss = [];
+      if (!next.phone) miss.push('받는분전화');
+      if (!next.qty || !/^[0-9]+$/.test(next.qty) || parseInt(next.qty, 10) < 1) miss.push('수량');
+      if (!next.addr) miss.push('주소');
+      if (!next.sname) miss.push('보내는사람');
+      if (!next.sphone) miss.push('보내는분전화');
+      plan.push({ row: row, r: r, next: next, changes: changes, mail: mail, miss: miss });
+    });
+
+    var updated = 0;
+    plan.forEach(function (p) {
+      var n = p.next, status = p.r[8];
+      if (status === '접수' || status === '확인필요') status = p.miss.length ? '확인필요' : '접수';
+      var note = [n.note, p.mail, p.miss.length ? '[미비:' + p.miss.join(',') + ']' : ''].filter(function (t) { return t; }).join(' ');
+      sh.getRange(p.row, 3).setNumberFormat('@');
+      sh.getRange(p.row, 7).setNumberFormat('@');
+      sh.getRange(p.row, ADMIN_COL_MEMO).setNumberFormat('@');
+      sh.getRange(p.row, 2, 1, 7).setValues([[n.name, n.phone, n.qty, n.addr, n.sname, n.sphone, note]]);
+      sh.getRange(p.row, 9).setValue(status);
+      sh.getRange(p.row, ADMIN_COL_MEMO).setValue(n.memo);
+      var line = now + ' ' + who + ': ' + p.changes.join(', ');
+      var log = (p.r[ADMIN_COL_LOG - 1] ? p.r[ADMIN_COL_LOG - 1] + '\n' : '') + line;
+      if (log.length > 1500) log = log.slice(log.length - 1500);
+      sh.getRange(p.row, ADMIN_COL_LOG).setValue(log);
+      var yellow = status === '확인필요';
+      sh.getRange(p.row, 1, 1, ADMIN_COL_LOG).setBackground(yellow ? '#FFF299' : null);
+      updated++;
+    });
+    return { updated: updated, skipped: skipped };
+  } finally {
+    lock.releaseLock();
+  }
 }

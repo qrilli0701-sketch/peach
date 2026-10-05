@@ -136,6 +136,24 @@
       border-radius:22px 22px 0 0;box-shadow:0 -8px 28px rgba(120,50,30,.12);padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
     .actbar .inner{max-width:560px;margin:0 auto}
     .actbar .primary{margin-top:10px}
+    .mini{margin-left:auto;border:1px solid var(--line);background:var(--panel);color:var(--soft);border-radius:10px;
+      padding:5px 10px;font-size:.78rem;font-weight:600}
+    .nm .mini{margin-left:8px}
+    .eform label{margin:10px 0 4px}
+    .eform input,.eform textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:12px;
+      font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit}
+    .eform textarea{min-height:84px;resize:vertical}
+    .eform input:focus,.eform textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+    .eform .btns{display:flex;gap:8px;margin-top:14px}
+    .eform .btns .primary{margin:0;flex:2}
+    .eform .btns .ghost{flex:1}
+    .eform .who-pick{margin:4px 0 0}
+    .eform .chip{padding:10px 4px;font-size:.92rem}
+    .memo{white-space:pre-wrap;font-size:.95rem;margin-top:6px}
+    .memo.empty{color:var(--soft)}
+    details.log{margin:6px 0 0;font-size:.8rem;color:var(--soft)}
+    details.log pre{white-space:pre-wrap;margin:6px 0 0;font-family:inherit}
+    .actbar.hide{display:none}
     .tk-label{font-size:.85rem;font-weight:700;color:var(--soft);margin:0 0 8px}
     .actbar .who-pick{margin:0}
     .actbar .chip{padding:11px 4px;font-size:.95rem}
@@ -208,14 +226,14 @@
     </div>
   </header>
   <div class="wrap" id="dBody"></div>
-  <div class="actbar"><div class="inner" id="dAct"></div></div>
+  <div class="actbar" id="dActBar"><div class="inner" id="dAct"></div></div>
 </div>
 
 <div id="toast"></div>
 
 <script>
   var K_TOKEN = 'peachAdminToken', K_BOARD = 'peachAdminBoard';
-  var state = { token: '', taker: '', groups: [], tab: 'todo', open: null, busy: false };
+  var state = { token: '', taker: '', edit: null, editor: '', groups: [], tab: 'todo', open: null, busy: false };
 
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function recall(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
@@ -432,7 +450,7 @@
       boardUpdate();
       if (state.open) {   // 상세 열려 있으면 최신 내용으로 다시 그림
         var g = findGroup(state.open);
-        if (g) renderDetail(g); else closeDetail();
+        if (g) { if (!state.edit) renderDetail(g); } else closeDetail();
       }
     }, function (m) {
       document.getElementById('list').innerHTML = '<p class="empty">' + esc(m) + '</p>';
@@ -484,6 +502,7 @@
         : '<span class="pill p-new">미확인</span>';
       if (g.warn && !g.checked) pills += '<span class="pill p-warn">빠진 칸</span>';
       if (g.mail) pills += '<span class="pill p-mail">메일</span>';
+      if (g.memo) pills += '<span class="pill p-mail">📝 메모</span>';
       return '<button class="' + cls + '" onclick="openDetail(\'' + encodeURIComponent(g.key) + '\')">' +
         '<div class="l1"><span class="sender">' + esc(g.sender || '(보내는분 없음)') + '</span>' +
         '<span class="boxes">' + (g.boxes ? g.boxes + '박스' : '박스 ?') + '</span></div>' +
@@ -501,34 +520,63 @@
   function openDetail(enc) {
     var g = findGroup(decodeURIComponent(enc));
     if (!g) return;
-    state.open = g.key; state.taker = '';
+    state.open = g.key; state.taker = ''; state.edit = null; state.editor = '';
     if (board.fresh[g.key]) { delete board.fresh[g.key]; boardRender(); }
     renderDetail(g);
     var d = document.getElementById('detail');
     d.classList.remove('hide'); d.scrollTop = 0;
   }
   function closeDetail() {
-    state.open = null;
+    state.open = null; state.edit = null;
     document.getElementById('detail').classList.add('hide');
+  }
+  function fld(label, id, val, extra) {
+    return '<label for="' + id + '">' + label + '</label><input id="' + id + '" value="' + esc(val) + '" ' + (extra || '') + '>';
+  }
+  function editorChips() {
+    return '<label>누가 고쳤어요?</label><div class="who-pick" id="editorPick">' + TAKERS.map(function (n) {
+      return '<button type="button" class="chip' + (state.editor === n ? ' on' : '') + '" onclick="pickEditor(\'' + n + '\')">' + n + '</button>';
+    }).join('') + '</div>';
+  }
+  function editBtns() {
+    return '<div class="btns"><button class="ghost" onclick="cancelEdit()">취소</button>' +
+      '<button class="primary" id="saveBtn" onclick="saveEdit()">저장</button></div>';
   }
   function renderDetail(g) {
     document.getElementById('dTitle').textContent = (g.sender || '주문') + ' · ' + g.boxes + '박스';
-    var mail = '';
-    var html = '<div class="sec">보내는 분</div><div class="rc">' +
-      '<div class="nm">' + esc(g.sender || '') + (g.sender ? '' : '<span class="miss">없음</span>') + '</div>' +
-      '<div class="row"><span class="k">전화</span><span class="v">' + telLink(g.senderPhone) + '</span></div>' +
-      '<div class="meta">접수 ' + esc(g.time) + '</div>';
+    var ed = state.edit, mail = '', html = '';
     g.items.forEach(function (it) { var n = splitNote(it.note); if (n.mail) mail = n.mail; });
-    if (mail) html += '<div class="meta">메일로 접수 · ' + esc(mail) + '</div>';
-    html += '</div>';
+
+    html += '<div class="sec">보내는 분</div>';
+    if (ed && ed.kind === 'sender') {
+      html += '<div class="rc eform">' + fld('성함', 'e_sname', g.sender) +
+        fld('연락처 (숫자 11자리)', 'e_sphone', g.senderPhone, 'inputmode="numeric" maxlength="13"') +
+        editorChips() + editBtns() + '</div>';
+    } else {
+      html += '<div class="rc">' +
+        '<div class="nm">' + esc(g.sender || '') + (g.sender ? '' : '<span class="miss">없음</span>') +
+        (g.checked ? '' : '<button class="mini" onclick="startEdit(\'sender\')">✏️ 수정</button>') + '</div>' +
+        '<div class="row"><span class="k">전화</span><span class="v">' + telLink(g.senderPhone) + '</span></div>' +
+        '<div class="meta">접수 ' + esc(g.time) + '</div>' +
+        (mail ? '<div class="meta">메일로 접수 · ' + esc(mail) + '</div>' : '') + '</div>';
+    }
 
     html += '<div class="sec">받는 분 ' + g.items.length + '명</div>';
     g.items.forEach(function (it, i) {
       var n = splitNote(it.note);
+      if (ed && ed.kind === 'row' && ed.i === i) {
+        html += '<div class="rc eform">' + fld('받는 분 성함', 'e_name', it.name) +
+          fld('연락처 (숫자 11자리)', 'e_phone', it.phone, 'inputmode="numeric" maxlength="13"') +
+          fld('수량 (박스)', 'e_qty', it.qty, 'inputmode="numeric"') +
+          fld('주소', 'e_addr', it.addr) + fld('비고', 'e_note', n.text) +
+          editorChips() + editBtns() + '</div>';
+        return;
+      }
       var warn = it.status === '확인필요' || !!n.miss;
       html += '<div class="rc' + (warn ? ' warn' : '') + '">' +
         '<div class="nm">' + (g.items.length > 1 ? (i + 1) + '. ' : '') + esc(it.name) +
-        '<span class="q">' + (it.qty ? esc(it.qty) + '박스' : '<span class="miss">수량 없음</span>') + '</span></div>' +
+        '<span class="q">' + (it.qty ? esc(it.qty) + '박스' : '<span class="miss">수량 없음</span>') + '</span>' +
+        (g.checked ? '' : '<button class="mini" style="margin-left:8px" onclick="startEdit(\'row\',' + i + ')">✏️ 수정</button>') + '</div>' +
         '<div class="row"><span class="k">전화</span><span class="v">' + telLink(it.phone) + '</span></div>' +
         '<div class="row"><span class="k">주소</span><span class="v">' + (it.addr ? esc(it.addr) : '<span class="miss">없음</span>') + '</span></div>' +
         (n.text ? '<div class="row"><span class="k">비고</span><span class="v">' + esc(n.text) + '</span></div>' : '') +
@@ -536,7 +584,19 @@
         (it.status === '완료' ? '<div class="meta">시트1에 기록됨</div>' : '') +
         '</div>';
     });
+
+    html += '<div class="sec">메모</div>';
+    if (ed && ed.kind === 'memo') {
+      html += '<div class="rc eform"><textarea id="e_memo" placeholder="예) 엄마가 전화 통화함, 주소 다시 확인해야 함">' + esc(g.memo) + '</textarea>' +
+        editorChips() + editBtns() + '</div>';
+    } else {
+      html += '<div class="rc"><div class="nm"><span style="font-weight:600;font-size:.9rem;color:var(--soft)">주문 전체에 대한 메모</span>' +
+        '<button class="mini" onclick="startEdit(\'memo\')">✏️ ' + (g.memo ? '수정' : '메모 쓰기') + '</button></div>' +
+        '<div class="memo' + (g.memo ? '' : ' empty') + '">' + (g.memo ? esc(g.memo) : '아직 메모가 없어요') + '</div>' +
+        (g.log ? '<details class="log"><summary>수정 기록 보기</summary><pre>' + esc(g.log) + '</pre></details>' : '') + '</div>';
+    }
     document.getElementById('dBody').innerHTML = html;
+    document.getElementById('dActBar').classList.toggle('hide', !!ed);
 
     var act = document.getElementById('dAct');
     if (g.checked) {
@@ -556,6 +616,43 @@
   function pickTaker(n) {
     state.taker = n;
     var g = findGroup(state.open); if (g) renderDetail(g);
+  }
+  function startEdit(kind, i) {
+    state.edit = { kind: kind, i: i == null ? -1 : i };
+    var g = findGroup(state.open); if (g) renderDetail(g);
+    var f = document.querySelector('#dBody .eform input, #dBody .eform textarea'); if (f) f.focus();
+  }
+  function cancelEdit() {
+    state.edit = null;
+    var g = findGroup(state.open); if (g) renderDetail(g);
+  }
+  function pickEditor(n) {
+    state.editor = n;
+    document.querySelectorAll('#editorPick .chip').forEach(function (c) { c.classList.toggle('on', c.textContent === n); });
+  }
+  function saveEdit() {
+    var g = findGroup(state.open), ed = state.edit; if (!g || !ed || state.busy) return;
+    if (!state.editor) { toast('누가 고쳤는지 먼저 눌러주세요'); return; }
+    var val = function (id) { return document.getElementById(id).value; };
+    var edits = [], newKey = null;
+    if (ed.kind === 'sender') {
+      g.items.forEach(function (it) { edits.push({ row: it.row, sig: it.sig, sname: val('e_sname'), sphone: val('e_sphone') }); });
+      newKey = [g.time, val('e_sname').trim(), val('e_sphone').replace(/[^0-9]/g, '')].join('|');
+    } else if (ed.kind === 'row') {
+      var it = g.items[ed.i];
+      edits.push({ row: it.row, sig: it.sig, name: val('e_name'), phone: val('e_phone'), qty: val('e_qty'), addr: val('e_addr'), note: val('e_note') });
+    } else {
+      var f = g.items[0];
+      edits.push({ row: f.row, sig: f.sig, memo: val('e_memo') });
+    }
+    state.busy = true;
+    var b = document.getElementById('saveBtn'); if (b) { b.disabled = true; b.textContent = '저장 중…'; }
+    call('adminEdit', [state.token, edits, state.editor], function (res) {
+      state.busy = false; state.edit = null;
+      if (newKey && res.updated) state.open = newKey;
+      toast(res.skipped ? '시트가 바뀐 줄이 있어 새로 불러왔어요' : res.updated ? '저장했어요' : '바뀐 내용이 없어요');
+      load();
+    }, function (m) { state.busy = false; toast(m); if (b) { b.disabled = false; b.textContent = '저장'; } });
   }
   function pickItems(g) { return g.items.map(function (it) { return { row: it.row, sig: it.sig }; }); }
   function confirmOrder() {
