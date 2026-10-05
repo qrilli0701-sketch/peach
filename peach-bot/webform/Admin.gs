@@ -13,7 +13,7 @@ var ADMIN_COL_AT = 11;   // K: 확인시각
 var ADMIN_DONE = { '확인': true, '완료': true };   // 확인된 것으로 보는 상태
 
 function adminPage_() {
-  return HtmlService.createHtmlOutputFromFile('Admin')
+  return HtmlService.createHtmlOutputFromFile('AdminPage')
     .setTitle('임가네 주문 확인')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
