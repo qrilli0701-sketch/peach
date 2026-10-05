@@ -43,6 +43,10 @@
     input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
       font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit}
     input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+    .who-pick{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 4px}
+    .chip{flex:1 1 28%;padding:13px 6px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);
+      color:var(--ink);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer}
+    .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk);box-shadow:0 0 0 3px var(--accent-soft)}
     .primary{width:100%;margin-top:18px;padding:15px;border:none;border-radius:14px;background:var(--grad);
       color:#fff;font-size:1.02rem;font-weight:700;box-shadow:0 6px 16px rgba(236,98,73,.3)}
     .primary:disabled{opacity:.5}
@@ -120,8 +124,15 @@
   <h1>🍑 임가네 주문 확인</h1>
   <p class="sub">가족만 들어올 수 있어요</p>
   <div class="box">
-    <label for="nm">이름 (확인한 사람으로 남아요)</label>
-    <input id="nm" placeholder="예) 엄마, 아빠, 지수" maxlength="20" autocomplete="name">
+    <label>누구세요? (확인한 사람으로 남아요)</label>
+    <div class="who-pick" id="whoPick">
+      <button type="button" class="chip" data-n="아빠">아빠</button>
+      <button type="button" class="chip" data-n="엄마">엄마</button>
+      <button type="button" class="chip" data-n="종원">종원</button>
+      <button type="button" class="chip" data-n="지은">지은</button>
+      <button type="button" class="chip" data-n="명석">명석</button>
+    </div>
+    <input id="nm" type="hidden">
     <label for="pw">가족 비밀번호</label>
     <input id="pw" type="password" autocomplete="current-password">
     <button class="primary" id="loginBtn" onclick="doLogin()">들어가기</button>
@@ -215,12 +226,24 @@
   }
 
   /* ── 로그인 ── */
+  function pickWho(n) {
+    var ok = false;
+    document.querySelectorAll('#whoPick .chip').forEach(function (c) {
+      var on = c.getAttribute('data-n') === n; ok = ok || on; c.classList.toggle('on', on);
+    });
+    document.getElementById('nm').value = ok ? n : '';
+  }
+  document.getElementById('whoPick').addEventListener('click', function (e) {
+    var c = e.target.closest ? e.target.closest('.chip') : null;
+    if (c) pickWho(c.getAttribute('data-n'));
+  });
+
   function doLogin() {
     var nm = document.getElementById('nm').value.trim();
     var pw = document.getElementById('pw').value;
     var err = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
     err.textContent = '';
-    if (!nm) { err.textContent = '이름을 적어주세요.'; return; }
+    if (!nm) { err.textContent = '위에서 누구인지 눌러주세요.'; return; }
     if (!pw) { err.textContent = '비밀번호를 적어주세요.'; return; }
     btn.disabled = true;
     call('adminLogin', [pw, nm], function (res) {
@@ -234,7 +257,7 @@
   function logout() {
     state.token = ''; store(K_TOKEN, null);
     closeDetail();
-    document.getElementById('nm').value = state.name || recall(K_NAME);
+    pickWho(state.name || recall(K_NAME));
     show('login');
   }
   function enter() {
@@ -385,7 +408,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden && state.token) load(); });
   state.token = recall(K_TOKEN); state.name = recall(K_NAME);
   if (state.token && state.name) enter();
-  else { document.getElementById('nm').value = state.name; show('login'); }
+  else { pickWho(state.name); show('login'); }
 </script>
 </body>
 </html>
