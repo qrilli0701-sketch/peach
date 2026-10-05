@@ -47,6 +47,9 @@
     .chip{flex:1 1 28%;padding:13px 6px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);
       color:var(--ink);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer}
     .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk);box-shadow:0 0 0 3px var(--accent-soft)}
+    .dl{width:100%;margin:12px 0 0;padding:12px;border:1.5px solid var(--accent);border-radius:12px;background:var(--panel);
+      color:var(--accent-dk);font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer}
+    .dl:disabled{opacity:.5}
     .primary{width:100%;margin-top:18px;padding:15px;border:none;border-radius:14px;background:var(--grad);
       color:#fff;font-size:1.02rem;font-weight:700;box-shadow:0 6px 16px rgba(236,98,73,.3)}
     .primary:disabled{opacity:.5}
@@ -158,6 +161,7 @@
       <input id="q" type="search" placeholder="이름, 주소, 전화번호, 비고 아무거나 찾기" oninput="render()">
     </div>
   </header>
+  <div class="wrap"><button class="dl" id="dlBtn" onclick="downloadAll()">📥 (받기) 전체리스트</button></div>
   <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
 </div>
 
@@ -223,6 +227,41 @@
         if (msg.indexOf('AUTH') !== -1) { logout(); document.getElementById('loginErr').textContent = '다시 로그인해주세요.'; return; }
         (fail || function (m) { toast(m); })(msg);
       })[fn].apply(null, args);
+  }
+
+  /* ── 전체리스트 엑셀 받기 (주문접수 탭만) ── */
+  var XLSX_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  function loadXlsx(cb, fail) {
+    if (window.XLSX) return cb();
+    var s = document.createElement('script');
+    s.src = XLSX_SRC; s.onload = cb; s.onerror = function () { fail('엑셀 도구를 불러오지 못했어요. 인터넷을 확인해주세요.'); };
+    document.head.appendChild(s);
+  }
+  function downloadAll() {
+    var btn = document.getElementById('dlBtn');
+    btn.disabled = true; btn.textContent = '준비 중…';
+    function done() { btn.disabled = false; btn.textContent = '📥 (받기) 전체리스트'; }
+    function fail(m) { done(); toast(m); }
+    call('adminExport', [state.token], function (res) {
+      var rows = (res && res.rows) || [];
+      if (rows.length < 2) { fail('받을 주문이 없어요.'); return; }
+      loadXlsx(function () {
+        try {
+          var ws = XLSX.utils.aoa_to_sheet(rows);
+          ws['!cols'] = [18, 12, 15, 6, 44, 12, 15, 30, 10, 10, 18].map(function (w) { return { wch: w }; });
+          var wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, '주문접수');
+          var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+          var fname = 'peach_orders_' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '.xlsx';
+          var blob = new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })],
+            { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          var url = URL.createObjectURL(blob), a = document.createElement('a');
+          a.href = url; a.download = fname; document.body.appendChild(a); a.click();
+          setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1500);
+          done(); toast('엑셀을 받았어요 (' + (rows.length - 1) + '줄)');
+        } catch (e) { fail('엑셀을 만들지 못했어요: ' + e.message); }
+      }, fail);
+    }, fail);
   }
 
   /* ── 로그인 ── */

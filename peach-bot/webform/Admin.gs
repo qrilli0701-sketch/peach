@@ -84,6 +84,16 @@ function adminList(token) {
   return { groups: groups };
 }
 
+/** '주문접수' 탭 전체(헤더 포함)를 화면에 보이는 그대로의 글자로 돌려준다 — 엑셀 내려받기용. 다른 탭은 건드리지 않는다. */
+function adminExport(token) {
+  adminCheck_(token);
+  var sh = adminSheet_();
+  var last = sh.getLastRow();
+  if (last < 1) return { rows: [] };
+  var width = Math.max(sh.getLastColumn(), ADMIN_COL_AT);
+  return { rows: sh.getRange(1, 1, last, width).getDisplayValues() };
+}
+
 /** 확인 처리. items = [{row, sig}] — 그사이 시트 줄이 바뀌었으면 그 줄은 건너뛴다. */
 function adminConfirm(token, items, name) {
   adminCheck_(token);
