@@ -3,8 +3,10 @@
  * '주문접수' 탭을 손님이 한 번 제출한 단위(같은 접수시각·보내는분)로 묶어 보여주고,
  * 가족이 '확인'을 누르면 상태를 '확인'으로 바꾸고 J열(확인자)·K열(확인시각)에 남긴다.
  *
- * [설정] 편집기 왼쪽 ⚙ 프로젝트 설정 → 스크립트 속성 → ADMIN_PASSWORD 추가 (가족 공용 비밀번호)
- *        비밀번호는 코드·레포에 넣지 않는다. 바꾸면 모든 폰이 다시 로그인해야 한다.
+ * [설정] 비밀번호는 스크립트 속성 ADMIN_PASSWORD 에 있다 (편집기 ⚙ 프로젝트 설정 → 스크립트 속성).
+ *        처음엔 clasp 로 배포하는 쪽이 git 에 안 올라가는 AdminSecret.gs 에
+ *        var ADMIN_PASSWORD_INIT = '...'; 를 만들어 함께 push 하면, 첫 로그인 때 속성으로 옮겨진다.
+ *        레포가 공개라 비밀번호는 코드·레포에 넣지 않는다. 바꾸면 모든 폰이 다시 로그인해야 한다.
  */
 var ADMIN_COL_BY = 10;   // J: 확인자
 var ADMIN_COL_AT = 11;   // K: 확인시각
@@ -143,7 +145,14 @@ function adminSig_(r) {
 }
 
 function adminPassword_() {
-  var pw = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSWORD');
+  var props = PropertiesService.getScriptProperties();
+  var pw = props.getProperty('ADMIN_PASSWORD');
+  // 처음 한 번: 배포할 때만 만드는 AdminSecret.gs(git 제외)의 ADMIN_PASSWORD_INIT 를 스크립트 속성으로 옮긴다.
+  // 그 뒤로는 파일이 없어져도 스크립트 속성에 남아 있다. (레포가 공개라 비밀번호를 코드에 두지 않음)
+  if (!pw && typeof ADMIN_PASSWORD_INIT !== 'undefined' && ADMIN_PASSWORD_INIT) {
+    pw = String(ADMIN_PASSWORD_INIT);
+    props.setProperty('ADMIN_PASSWORD', pw);
+  }
   if (!pw) throw new Error('관리자 비밀번호가 아직 설정되지 않았어요. (스크립트 속성 ADMIN_PASSWORD)');
   return pw;
 }
