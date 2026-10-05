@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+  <style>
+    :root{
+      --ground:#FFF6F0; --panel:#FFFFFF; --panel-2:#FFF0E8;
+      --ink:#2C221B; --soft:#6E5D50; --line:#E6D8CA;
+      --accent:#EC6249; --accent-dk:#CF4B33; --accent-soft:#FFE3D8;
+      --grad:linear-gradient(135deg,#FF9F7A 0%,#F0604D 100%);
+      --ok:#2F8F5B; --ok-soft:#E1F3E8; --warn:#8A6D00; --warn-soft:#FFF4B8;
+      --danger:#C0392B; --shadow:0 2px 4px rgba(120,50,30,.04),0 12px 32px rgba(120,50,30,.08);
+    }
+    @media (prefers-color-scheme:dark){:root{
+      --ground:#1E1712; --panel:#2A211B; --panel-2:#332821;
+      --ink:#F1E7DD; --soft:#B7A596; --line:#42342A;
+      --accent:#F08A63; --accent-dk:#F5A582; --accent-soft:#4A2E22;
+      --grad:linear-gradient(135deg,#F59B78 0%,#E5604C 100%);
+      --ok:#74C995; --ok-soft:#1F3A2A; --warn:#F2D36B; --warn-soft:#3E3518;
+      --danger:#E8776A; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.4);
+    }}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--ground);color:var(--ink);
+      font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo",sans-serif;
+      line-height:1.55;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:560px;margin:0 auto;padding:0 16px}
+    button{font-family:inherit;cursor:pointer}
+    a{color:inherit}
+    .hide{display:none!important}
+
+    /* 로그인 */
+    #login{padding:64px 0 40px}
+    #login h1{font-family:"Gowun Batang",serif;font-size:1.8rem;text-align:center;margin:0 0 6px}
+    #login .sub{text-align:center;color:var(--soft);font-size:.88rem;margin:0 0 28px}
+    .box{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:18px 20px 22px;box-shadow:var(--shadow)}
+    label{display:block;font-size:.8rem;font-weight:600;margin:12px 0 5px;color:var(--soft)}
+    input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;
+      font-size:1rem;background:var(--panel);color:var(--ink);font-family:inherit}
+    input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+    .primary{width:100%;margin-top:18px;padding:15px;border:none;border-radius:14px;background:var(--grad);
+      color:#fff;font-size:1.02rem;font-weight:700;box-shadow:0 6px 16px rgba(236,98,73,.3)}
+    .primary:disabled{opacity:.5}
+    .err{color:var(--danger);font-size:.84rem;text-align:center;min-height:1.2em;margin:10px 0 0}
+
+    /* 상단 */
+    header{position:sticky;top:0;z-index:5;background:var(--ground);padding:14px 0 10px;border-bottom:1px solid var(--line)}
+    .top{display:flex;align-items:center;gap:10px}
+    .top h1{font-family:"Gowun Batang",serif;font-size:1.25rem;margin:0;flex:1}
+    .who{font-size:.78rem;color:var(--soft)}
+    .icon{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:10px;
+      padding:7px 10px;font-size:.82rem;min-height:36px}
+    .icon.big{font-size:1.15rem;line-height:1;padding:6px 11px}
+    .tabs{display:flex;gap:6px;margin:12px 0 10px}
+    .tab{flex:1;padding:9px 4px;border:1.5px solid var(--line);background:var(--panel);color:var(--soft);
+      border-radius:12px;font-size:.88rem;font-weight:600}
+    .tab.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk)}
+    .tab .n{font-weight:700}
+    #q{padding:11px 14px;font-size:.95rem}
+
+    /* 목록 카드 */
+    #list{padding-top:12px;padding-bottom:40px}
+    .card{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);
+      border-left:5px solid var(--accent);border-radius:16px;padding:13px 15px;margin-bottom:10px;
+      box-shadow:var(--shadow);color:var(--ink)}
+    .card.checked{border-left-color:var(--ok)}
+    .card.warn{border-left-color:#E8C200;background:var(--warn-soft)}
+    .card .l1{display:flex;align-items:center;gap:8px}
+    .card .sender{font-weight:700;font-size:1.02rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .card .boxes{font-weight:700;color:var(--accent-dk);white-space:nowrap}
+    .card .l2{font-size:.88rem;color:var(--ink);margin-top:2px}
+    .card .l3{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:.76rem;color:var(--soft);margin-top:6px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .p-new{background:var(--accent-soft);color:var(--accent-dk)}
+    .p-ok{background:var(--ok-soft);color:var(--ok)}
+    .p-warn{background:#FFE36E;color:#5C4A00}
+    .p-mail{background:var(--panel-2);color:var(--soft);border:1px solid var(--line)}
+    .empty{text-align:center;color:var(--soft);padding:50px 0;font-size:.92rem}
+
+    /* 상세 */
+    #detail{position:fixed;inset:0;z-index:20;background:var(--ground);overflow-y:auto;padding-bottom:150px}
+    #detail header{display:flex;align-items:center;gap:10px}
+    #detail header h2{font-size:1.05rem;margin:0;flex:1}
+    .sec{font-family:"Gowun Batang",serif;color:var(--accent);font-size:.95rem;margin:18px 0 8px}
+    .rc{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px;box-shadow:var(--shadow)}
+    .rc.warn{background:var(--warn-soft);border-color:#E8C200}
+    .rc .nm{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.05rem}
+    .rc .nm .q{margin-left:auto;color:var(--accent-dk)}
+    .row{display:flex;gap:10px;font-size:.92rem;margin-top:6px}
+    .row .k{flex:none;width:44px;color:var(--soft);font-size:.8rem;padding-top:2px}
+    .row .v{flex:1;min-width:0;word-break:break-all}
+    .tel{color:var(--accent-dk);font-weight:600;text-decoration:none}
+    .miss{color:var(--danger);font-weight:600}
+    .notice{background:var(--warn-soft);border:1px solid #E8C200;color:var(--ink);border-radius:12px;padding:10px 12px;font-size:.86rem;margin-top:12px}
+    .meta{font-size:.8rem;color:var(--soft);margin-top:4px}
+
+    .actbar{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--panel);border-top:1px solid var(--line);
+      border-radius:22px 22px 0 0;box-shadow:0 -8px 28px rgba(120,50,30,.12);padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
+    .actbar .inner{max-width:560px;margin:0 auto}
+    .actbar .primary{margin-top:0}
+    .okline{display:flex;align-items:center;gap:10px}
+    .okline .txt{flex:1;color:var(--ok);font-weight:700;font-size:.95rem}
+    .okline .txt small{display:block;color:var(--soft);font-weight:400;font-size:.78rem}
+    .ghost{border:1.5px solid var(--line);background:var(--panel);color:var(--soft);border-radius:12px;padding:10px 14px;font-size:.86rem}
+
+    #toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:var(--ground);
+      padding:10px 18px;border-radius:999px;font-size:.88rem;z-index:40;opacity:0;transition:opacity .2s;pointer-events:none}
+    #toast.show{opacity:.95}
+  </style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login" class="wrap hide">
+  <h1>🍑 임가네 주문 확인</h1>
+  <p class="sub">가족만 들어올 수 있어요</p>
+  <div class="box">
+    <label for="nm">이름 (확인한 사람으로 남아요)</label>
+    <input id="nm" placeholder="예) 엄마, 아빠, 지수" maxlength="20" autocomplete="name">
+    <label for="pw">가족 비밀번호</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <button class="primary" id="loginBtn" onclick="doLogin()">들어가기</button>
+    <p class="err" id="loginErr"></p>
+  </div>
+</div>
+
+<!-- 목록 -->
+<div id="main" class="hide">
+  <header>
+    <div class="wrap">
+      <div class="top">
+        <h1>🍑 주문 확인</h1>
+        <span class="who" id="who"></span>
+        <button class="icon big" onclick="load()" aria-label="새로고침">↻</button>
+        <button class="icon" onclick="logout()">나가기</button>
+      </div>
+      <div class="tabs">
+        <button class="tab on" data-tab="todo" onclick="setTab('todo')">미확인 <span class="n" id="n-todo">0</span></button>
+        <button class="tab" data-tab="done" onclick="setTab('done')">확인됨 <span class="n" id="n-done">0</span></button>
+        <button class="tab" data-tab="all" onclick="setTab('all')">전체 <span class="n" id="n-all">0</span></button>
+      </div>
+      <input id="q" type="search" placeholder="이름이나 전화번호 뒷자리로 찾기" oninput="render()">
+    </div>
+  </header>
+  <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
+</div>
+
+<!-- 상세 -->
+<div id="detail" class="hide">
+  <header>
+    <div class="wrap" style="display:flex;align-items:center;gap:10px;width:100%">
+      <button class="icon" onclick="closeDetail()">← 목록</button>
+      <h2 id="dTitle"></h2>
+    </div>
+  </header>
+  <div class="wrap" id="dBody"></div>
+  <div class="actbar"><div class="inner" id="dAct"></div></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  var K_TOKEN = 'peachAdminToken', K_NAME = 'peachAdminName';
+  var state = { token: '', name: '', groups: [], tab: 'todo', open: null, busy: false };
+
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function recall(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtPhone(p) {
+    var d = String(p || '').replace(/[^0-9]/g, '');
+    if (d.length === 11) return d.slice(0, 3) + '-' + d.slice(3, 7) + '-' + d.slice(7);
+    if (d.length === 10) return d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6);
+    return p || '';
+  }
+  function telLink(p) {
+    var d = String(p || '').replace(/[^0-9]/g, '');
+    if (!d) return '<span class="miss">없음</span>';
+    return '<a class="tel" href="tel:' + d + '">' + esc(fmtPhone(p)) + '</a>';
+  }
+  function splitNote(note) {
+    var mail = '', m = String(note || '').match(/\[메일:([^\]]*)\]/);
+    if (m) mail = m[1];
+    var miss = '', m2 = String(note || '').match(/\[미비:([^\]]*)\]/);
+    if (m2) miss = m2[1];
+    var text = String(note || '').replace(/\[메일:[^\]]*\]/g, '').replace(/\[미비:[^\]]*\]/g, '').trim();
+    return { text: text, mail: mail, miss: miss };
+  }
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+  function show(id) {
+    ['login', 'main'].forEach(function (x) { document.getElementById(x).classList.toggle('hide', x !== id); });
+  }
+
+  function call(fn, args, ok, fail) {
+    google.script.run
+      .withSuccessHandler(ok)
+      .withFailureHandler(function (e) {
+        var msg = (e && e.message) || String(e);
+        if (msg.indexOf('AUTH') !== -1) { logout(); document.getElementById('loginErr').textContent = '다시 로그인해주세요.'; return; }
+        (fail || function (m) { toast(m); })(msg);
+      })[fn].apply(null, args);
+  }
+
+  /* ── 로그인 ── */
+  function doLogin() {
+    var nm = document.getElementById('nm').value.trim();
+    var pw = document.getElementById('pw').value;
+    var err = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
+    err.textContent = '';
+    if (!nm) { err.textContent = '이름을 적어주세요.'; return; }
+    if (!pw) { err.textContent = '비밀번호를 적어주세요.'; return; }
+    btn.disabled = true;
+    call('adminLogin', [pw, nm], function (res) {
+      btn.disabled = false;
+      state.token = res.token; state.name = nm;
+      store(K_TOKEN, res.token); store(K_NAME, nm);
+      document.getElementById('pw').value = '';
+      enter();
+    }, function (m) { btn.disabled = false; err.textContent = m; });
+  }
+  function logout() {
+    state.token = ''; store(K_TOKEN, null);
+    closeDetail();
+    document.getElementById('nm').value = state.name || recall(K_NAME);
+    show('login');
+  }
+  function enter() {
+    document.getElementById('who').textContent = state.name + '님';
+    show('main');
+    load();
+  }
+
+  /* ── 목록 ── */
+  function load() {
+    call('adminList', [state.token], function (res) {
+      state.groups = res.groups || [];
+      render();
+      if (state.open) {   // 상세 열려 있으면 최신 내용으로 다시 그림
+        var g = findGroup(state.open);
+        if (g) renderDetail(g); else closeDetail();
+      }
+    }, function (m) {
+      document.getElementById('list').innerHTML = '<p class="empty">' + esc(m) + '</p>';
+    });
+  }
+  function setTab(t) {
+    state.tab = t;
+    document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-tab') === t); });
+    render();
+  }
+  function matches(g, q) {
+    if (!q) return true;
+    var qd = q.replace(/[^0-9]/g, '');
+    var hay = [g.sender].concat(g.items.map(function (i) { return i.name; })).join(' ');
+    if (hay.indexOf(q) !== -1) return true;
+    if (qd.length >= 3) {
+      var phones = [g.senderPhone].concat(g.items.map(function (i) { return i.phone; })).join(' ').replace(/[^0-9 ]/g, '');
+      if (phones.indexOf(qd) !== -1) return true;
+    }
+    return false;
+  }
+  function render() {
+    var q = document.getElementById('q').value.trim();
+    var all = state.groups;
+    document.getElementById('n-todo').textContent = all.filter(function (g) { return !g.checked; }).length;
+    document.getElementById('n-done').textContent = all.filter(function (g) { return g.checked; }).length;
+    document.getElementById('n-all').textContent = all.length;
+
+    var list = all.filter(function (g) {
+      if (state.tab === 'todo' && g.checked) return false;
+      if (state.tab === 'done' && !g.checked) return false;
+      return matches(g, q);
+    });
+    var el = document.getElementById('list');
+    if (!list.length) {
+      el.innerHTML = '<p class="empty">' + (q ? '찾는 주문이 없어요' : state.tab === 'todo' ? '새로 확인할 주문이 없어요 👍' : '주문이 없어요') + '</p>';
+      return;
+    }
+    el.innerHTML = list.map(function (g) {
+      var first = g.items[0] ? g.items[0].name : '';
+      var more = g.items.length > 1 ? ' 외 ' + (g.items.length - 1) + '명' : '';
+      var cls = 'card' + (g.checked ? ' checked' : g.warn ? ' warn' : '');
+      var pills = g.checked
+        ? '<span class="pill p-ok">✓ ' + esc(g.by || (g.sheet1 ? '시트1 기록됨' : '확인')) + '</span>'
+        : '<span class="pill p-new">미확인</span>';
+      if (g.warn && !g.checked) pills += '<span class="pill p-warn">빠진 칸</span>';
+      if (g.mail) pills += '<span class="pill p-mail">메일</span>';
+      return '<button class="' + cls + '" onclick="openDetail(\'' + encodeURIComponent(g.key) + '\')">' +
+        '<div class="l1"><span class="sender">' + esc(g.sender || '(보내는분 없음)') + '</span>' +
+        '<span class="boxes">' + (g.boxes ? g.boxes + '박스' : '박스 ?') + '</span></div>' +
+        '<div class="l2">→ ' + esc(first) + esc(more) + '</div>' +
+        '<div class="l3">' + pills + '<span>' + esc(g.time) + '</span></div>' +
+        '</button>';
+    }).join('');
+  }
+
+  /* ── 상세 ── */
+  function findGroup(key) {
+    for (var i = 0; i < state.groups.length; i++) if (state.groups[i].key === key) return state.groups[i];
+    return null;
+  }
+  function openDetail(enc) {
+    var g = findGroup(decodeURIComponent(enc));
+    if (!g) return;
+    state.open = g.key;
+    renderDetail(g);
+    var d = document.getElementById('detail');
+    d.classList.remove('hide'); d.scrollTop = 0;
+  }
+  function closeDetail() {
+    state.open = null;
+    document.getElementById('detail').classList.add('hide');
+  }
+  function renderDetail(g) {
+    document.getElementById('dTitle').textContent = (g.sender || '주문') + ' · ' + g.boxes + '박스';
+    var mail = '';
+    var html = '<div class="sec">보내는 분</div><div class="rc">' +
+      '<div class="nm">' + esc(g.sender || '') + (g.sender ? '' : '<span class="miss">없음</span>') + '</div>' +
+      '<div class="row"><span class="k">전화</span><span class="v">' + telLink(g.senderPhone) + '</span></div>' +
+      '<div class="meta">접수 ' + esc(g.time) + '</div>';
+    g.items.forEach(function (it) { var n = splitNote(it.note); if (n.mail) mail = n.mail; });
+    if (mail) html += '<div class="meta">메일로 접수 · ' + esc(mail) + '</div>';
+    html += '</div>';
+
+    html += '<div class="sec">받는 분 ' + g.items.length + '명</div>';
+    g.items.forEach(function (it, i) {
+      var n = splitNote(it.note);
+      var warn = it.status === '확인필요' || !!n.miss;
+      html += '<div class="rc' + (warn ? ' warn' : '') + '">' +
+        '<div class="nm">' + (g.items.length > 1 ? (i + 1) + '. ' : '') + esc(it.name) +
+        '<span class="q">' + (it.qty ? esc(it.qty) + '박스' : '<span class="miss">수량 없음</span>') + '</span></div>' +
+        '<div class="row"><span class="k">전화</span><span class="v">' + telLink(it.phone) + '</span></div>' +
+        '<div class="row"><span class="k">주소</span><span class="v">' + (it.addr ? esc(it.addr) : '<span class="miss">없음</span>') + '</span></div>' +
+        (n.text ? '<div class="row"><span class="k">비고</span><span class="v">' + esc(n.text) + '</span></div>' : '') +
+        (n.miss ? '<div class="notice">빠진 칸: ' + esc(n.miss) + '</div>' : '') +
+        (it.status === '완료' ? '<div class="meta">시트1에 기록됨</div>' : '') +
+        '</div>';
+    });
+    document.getElementById('dBody').innerHTML = html;
+
+    var act = document.getElementById('dAct');
+    if (g.checked) {
+      act.innerHTML = '<div class="okline"><div class="txt">✓ 확인됨' +
+        '<small>' + esc(g.by || '') + (g.at ? ' · ' + esc(g.at) : '') + '</small></div>' +
+        (g.sheet1 ? '' : '<button class="ghost" onclick="unconfirm()">확인 취소</button>') + '</div>';
+    } else {
+      act.innerHTML = '<button class="primary" id="okBtn" onclick="confirmOrder()">✓ 잘 들어왔어요, 확인</button>';
+    }
+  }
+  function pickItems(g) { return g.items.map(function (it) { return { row: it.row, sig: it.sig }; }); }
+  function confirmOrder() {
+    var g = findGroup(state.open); if (!g || state.busy) return;
+    state.busy = true;
+    var b = document.getElementById('okBtn'); if (b) { b.disabled = true; b.textContent = '저장 중…'; }
+    call('adminConfirm', [state.token, pickItems(g), state.name], function (res) {
+      state.busy = false;
+      toast(res.skipped ? '시트가 바뀐 줄이 있어 새로 불러왔어요' : '확인했어요');
+      closeDetail(); load();
+    }, function (m) { state.busy = false; toast(m); if (b) { b.disabled = false; b.textContent = '✓ 잘 들어왔어요, 확인'; } });
+  }
+  function unconfirm() {
+    var g = findGroup(state.open); if (!g || state.busy) return;
+    if (!confirm('확인을 취소할까요?')) return;
+    state.busy = true;
+    call('adminUnconfirm', [state.token, pickItems(g)], function () {
+      state.busy = false; toast('확인을 취소했어요'); load();
+    }, function (m) { state.busy = false; toast(m); });
+  }
+
+  /* ── 시작 ── */
+  document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && state.token) load(); });
+  state.token = recall(K_TOKEN); state.name = recall(K_NAME);
+  if (state.token && state.name) enter();
+  else { document.getElementById('nm').value = state.name; show('login'); }
+</script>
+</body>
+</html>
