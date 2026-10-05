@@ -47,9 +47,35 @@
     .chip{flex:1 1 28%;padding:13px 6px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);
       color:var(--ink);font-size:1rem;font-weight:600;font-family:inherit;cursor:pointer}
     .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk);box-shadow:0 0 0 3px var(--accent-soft)}
-    .dl{width:100%;margin:12px 0 0;padding:12px;border:1.5px solid var(--accent);border-radius:12px;background:var(--panel);
+    .btnrow{display:flex;gap:8px}
+    .dl{flex:1;margin:12px 0 0;padding:12px;border:1.5px solid var(--accent);border-radius:12px;background:var(--panel);
       color:var(--accent-dk);font-size:.95rem;font-weight:700;font-family:inherit;cursor:pointer}
     .dl:disabled{opacity:.5}
+    /* 알림판 (태블릿용) */
+    #board{min-height:100vh;padding:0 0 28px}
+    .btop{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+    .btop h1{font-family:"Gowun Batang",serif;font-size:1.5rem;margin:0;flex:1}
+    .btop .clock{font-size:1.1rem;color:var(--soft);font-weight:600}
+    .bwrap{max-width:1100px;margin:0 auto;padding:0 20px}
+    .bcount{display:flex;align-items:baseline;gap:14px;margin:22px 0 10px}
+    .bcount .num{font-size:clamp(3.2rem,9vw,5.5rem);font-weight:800;line-height:1;color:var(--accent-dk)}
+    .bcount .unit{font-size:1.4rem;font-weight:700}
+    .bcount .sub{margin-left:auto;color:var(--soft);font-size:1.05rem;font-weight:600}
+    #bNew{display:none;margin:0 0 14px;padding:16px 20px;border-radius:16px;background:var(--grad);color:#fff;
+      font-size:1.6rem;font-weight:800;text-align:center;animation:pulse 1s ease-in-out infinite}
+    @keyframes pulse{50%{transform:scale(1.015);opacity:.88}}
+    .bgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:14px}
+    .bcard{display:block;width:100%;text-align:left;background:var(--panel);border:1.5px solid var(--line);
+      border-left:8px solid var(--accent);border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);color:var(--ink)}
+    .bcard.fresh{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft),var(--shadow)}
+    .bcard.warn{border-left-color:#E8C200}
+    .bcard .b1{display:flex;align-items:center;gap:10px}
+    .bcard .bs{font-size:1.45rem;font-weight:800;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .bcard .bq{font-size:1.45rem;font-weight:800;color:var(--accent-dk);white-space:nowrap}
+    .bcard .b2{font-size:1.2rem;margin-top:4px}
+    .bcard .b3{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;color:var(--soft);font-size:.95rem}
+    .bempty{text-align:center;font-size:1.7rem;color:var(--soft);padding:70px 0}
+    .bfoot{text-align:center;color:var(--soft);font-size:.95rem;margin-top:22px}
     .primary{width:100%;margin-top:18px;padding:15px;border:none;border-radius:14px;background:var(--grad);
       color:#fff;font-size:1.02rem;font-weight:700;box-shadow:0 6px 16px rgba(236,98,73,.3)}
     .primary:disabled{opacity:.5}
@@ -161,8 +187,23 @@
       <input id="q" type="search" placeholder="이름, 주소, 전화번호, 비고 아무거나 찾기" oninput="render()">
     </div>
   </header>
-  <div class="wrap"><button class="dl" id="dlBtn" onclick="downloadAll()">📥 (받기) 전체리스트</button></div>
+  <div class="wrap btnrow"><button class="dl" id="dlBtn" onclick="downloadAll()">📥 (받기) 전체리스트</button><button class="dl" onclick="startBoard()">📺 알림판</button></div>
   <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
+</div>
+
+<!-- 알림판 -->
+<div id="board" class="hide">
+  <div class="btop">
+    <h1>🍑 새 주문 알림판</h1>
+    <span class="clock" id="bClock"></span>
+    <button class="icon" onclick="stopBoard()">목록으로</button>
+  </div>
+  <div class="bwrap">
+    <div class="bcount"><span class="num" id="bNum">0</span><span class="unit">건 미확인</span><span class="sub" id="bBoxes"></span></div>
+    <div id="bNew"></div>
+    <div class="bgrid" id="bList"></div>
+    <p class="bfoot" id="bFoot"></p>
+  </div>
 </div>
 
 <!-- 상세 -->
@@ -180,7 +221,7 @@
 <div id="toast"></div>
 
 <script>
-  var K_TOKEN = 'peachAdminToken', K_NAME = 'peachAdminName';
+  var K_TOKEN = 'peachAdminToken', K_NAME = 'peachAdminName', K_BOARD = 'peachAdminBoard';
   var state = { token: '', name: '', groups: [], tab: 'todo', open: null, busy: false };
 
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
@@ -216,7 +257,7 @@
     clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
   }
   function show(id) {
-    ['login', 'main'].forEach(function (x) { document.getElementById(x).classList.toggle('hide', x !== id); });
+    ['login', 'main', 'board'].forEach(function (x) { document.getElementById(x).classList.toggle('hide', x !== id); });
   }
 
   function call(fn, args, ok, fail) {
@@ -227,6 +268,106 @@
         if (msg.indexOf('AUTH') !== -1) { logout(); document.getElementById('loginErr').textContent = '다시 로그인해주세요.'; return; }
         (fail || function (m) { toast(m); })(msg);
       })[fn].apply(null, args);
+  }
+
+  /* ── 알림판 (태블릿을 켜 두는 용도) ── */
+  var board = { on: false, timer: null, clock: null, known: null, fresh: {}, newCount: 0, lastAt: '', ctx: null, wake: null };
+  var POLL_MS = 30000;
+
+  function audioCtx() {
+    try {
+      if (!board.ctx) board.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (board.ctx.state === 'suspended') board.ctx.resume();
+    } catch (e) {}
+    return board.ctx;
+  }
+  function beep() {
+    var c = audioCtx(); if (!c || c.state !== 'running') return false;
+    [[880, 0], [660, 0.32], [880, 0.64]].forEach(function (n) {
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = 'sine'; o.frequency.value = n[0]; o.connect(g); g.connect(c.destination);
+      var t = c.currentTime + n[1];
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+      o.start(t); o.stop(t + 0.3);
+    });
+    return true;
+  }
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && navigator.wakeLock.request) {
+        navigator.wakeLock.request('screen').then(function (l) { board.wake = l; }, function () {});
+      }
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (board.on && !document.hidden) { keepAwake(); load(); }
+  });
+  // 화면을 한 번이라도 누르면 소리가 켜진다 (브라우저 규칙)
+  document.addEventListener('pointerdown', function () { if (board.on) audioCtx(); });
+
+  function startBoard() {
+    board.on = true; board.known = null; board.fresh = {}; board.newCount = 0;
+    store(K_BOARD, '1');
+    audioCtx(); keepAwake();
+    show('board');
+    clearInterval(board.timer); board.timer = setInterval(load, POLL_MS);
+    clearInterval(board.clock); board.clock = setInterval(boardClock, 1000); boardClock();
+    boardRender();
+    if (state.token) load();
+  }
+  function stopBoard() {
+    board.on = false; store(K_BOARD, null);
+    clearInterval(board.timer); clearInterval(board.clock);
+    try { if (board.wake) board.wake.release(); } catch (e) {}
+    board.wake = null;
+    show('main');
+  }
+  function boardClock() {
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    document.getElementById('bClock').textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  // 새로 불러올 때마다: 처음 보는 미확인 묶음이 있으면 소리 + 큰 배너
+  function boardUpdate() {
+    if (!board.on) return;
+    var todo = state.groups.filter(function (g) { return !g.checked; });
+    var keys = {}; todo.forEach(function (g) { keys[g.key] = true; });
+    if (board.known) {
+      var added = todo.filter(function (g) { return !board.known[g.key]; });
+      if (added.length) {
+        added.forEach(function (g) { board.fresh[g.key] = true; });
+        board.newCount += added.length;
+        beep();
+      }
+    }
+    board.known = keys;
+    Object.keys(board.fresh).forEach(function (k) { if (!keys[k]) delete board.fresh[k]; });
+    var d = new Date(), p = function (n) { return (n < 10 ? '0' : '') + n; };
+    board.lastAt = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+    boardRender();
+  }
+  function boardRender() {
+    var todo = state.groups.filter(function (g) { return !g.checked; });
+    var boxes = todo.reduce(function (s, g) { return s + (g.boxes || 0); }, 0);
+    document.getElementById('bNum').textContent = todo.length;
+    document.getElementById('bBoxes').textContent = todo.length ? '총 ' + boxes + '박스' : '';
+    var nb = document.getElementById('bNew'), fresh = Object.keys(board.fresh).length;
+    nb.style.display = fresh ? 'block' : 'none';
+    nb.textContent = fresh ? '🔔 새 주문 ' + fresh + '건이 들어왔어요!' : '';
+    document.getElementById('bList').innerHTML = todo.length ? todo.map(function (g) {
+      var first = g.items[0] ? g.items[0].name : '';
+      var more = g.items.length > 1 ? ' 외 ' + (g.items.length - 1) + '명' : '';
+      var cls = 'bcard' + (board.fresh[g.key] ? ' fresh' : '') + (g.warn ? ' warn' : '');
+      var pills = (board.fresh[g.key] ? '<span class="pill p-new">NEW</span>' : '') +
+        (g.warn ? '<span class="pill p-warn">빠진 칸</span>' : '') + (g.mail ? '<span class="pill p-mail">메일</span>' : '');
+      return '<button class="' + cls + '" onclick="openDetail(\'' + encodeURIComponent(g.key) + '\')">' +
+        '<div class="b1"><span class="bs">' + esc(g.sender || '(보내는분 없음)') + '</span><span class="bq">' + (g.boxes ? g.boxes + '박스' : '박스 ?') + '</span></div>' +
+        '<div class="b2">→ ' + esc(first) + esc(more) + '</div>' +
+        '<div class="b3">' + pills + '<span>' + esc(g.time) + '</span></div></button>';
+    }).join('') : '';
+    if (!todo.length) document.getElementById('bList').innerHTML = '<div class="bempty" style="grid-column:1/-1">새로 확인할 주문이 없어요 👍</div>';
+    var snd = board.ctx && board.ctx.state === 'running' ? '🔊 소리 켜짐' : '🔇 화면을 한 번 누르면 소리가 켜져요';
+    document.getElementById('bFoot').textContent = '30초마다 자동으로 새로 불러와요 · 마지막 확인 ' + (board.lastAt || '-') + ' · ' + snd;
   }
 
   /* ── 전체리스트 엑셀 받기 (주문접수 탭만) ── */
@@ -295,13 +436,14 @@
   }
   function logout() {
     state.token = ''; store(K_TOKEN, null);
+    board.on = false; clearInterval(board.timer); clearInterval(board.clock);   // 알림판 설정은 남겨 두어 다시 로그인하면 알림판으로 돌아온다
     closeDetail();
     pickWho(state.name || recall(K_NAME));
     show('login');
   }
   function enter() {
     document.getElementById('who').textContent = state.name + '님';
-    show('main');
+    if (recall(K_BOARD) === '1') startBoard(); else show('main');
     load();
   }
 
@@ -310,6 +452,7 @@
     call('adminList', [state.token], function (res) {
       state.groups = res.groups || [];
       render();
+      boardUpdate();
       if (state.open) {   // 상세 열려 있으면 최신 내용으로 다시 그림
         var g = findGroup(state.open);
         if (g) renderDetail(g); else closeDetail();
@@ -382,6 +525,7 @@
     var g = findGroup(decodeURIComponent(enc));
     if (!g) return;
     state.open = g.key;
+    if (board.fresh[g.key]) { delete board.fresh[g.key]; boardRender(); }
     renderDetail(g);
     var d = document.getElementById('detail');
     d.classList.remove('hide'); d.scrollTop = 0;
