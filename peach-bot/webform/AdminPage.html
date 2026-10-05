@@ -90,7 +90,7 @@
       padding:7px 10px;font-size:.82rem;min-height:36px}
     .icon.big{font-size:1.15rem;line-height:1;padding:6px 11px}
     .tabs{display:flex;gap:6px;margin:12px 0 10px}
-    .tab{flex:1;padding:9px 4px;border:1.5px solid var(--line);background:var(--panel);color:var(--soft);
+    .tab{flex:1;padding:9px 2px;white-space:nowrap;border:1.5px solid var(--line);background:var(--panel);color:var(--soft);
       border-radius:12px;font-size:.88rem;font-weight:600}
     .tab.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-dk)}
     .tab .n{font-weight:700}
@@ -215,6 +215,7 @@
         <button class="icon" onclick="logout()">나가기</button>
       </div>
       <div class="tabs">
+        <button class="tab" data-tab="stat" onclick="setTab('stat')">📊 현황판</button>
         <button class="tab on" data-tab="todo" onclick="setTab('todo')">미확인 <span class="n" id="n-todo">0</span></button>
         <button class="tab" data-tab="done" onclick="setTab('done')">확인됨 <span class="n" id="n-done">0</span></button>
         <button class="tab" data-tab="all" onclick="setTab('all')">전체 <span class="n" id="n-all">0</span></button>
@@ -222,7 +223,7 @@
       <input id="q" type="search" placeholder="이름, 주소, 전화번호, 비고 아무거나 찾기" oninput="render()">
     </div>
   </header>
-  <div class="wrap"><div class="stats" id="stats"></div></div>
+  <div class="wrap" id="statsWrap" style="display:none"><div class="stats" id="stats"></div></div>
   <div class="wrap btnrow"><button class="dl" id="dlBtn" onclick="downloadAll()">📥 (받기) 전체리스트</button><button class="dl" onclick="startBoard()">📺 알림판</button></div>
   <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
 </div>
@@ -473,10 +474,9 @@
   function dayLabel(k) { return k.slice(5, 7) + '/' + k.slice(8, 10); }
   var spDays = [];
   function renderStats() {
-    var G = state.groups, boxes = 0, todo = 0, amount = 0, byDay = {}, ordersByDay = {};
+    var G = state.groups, boxes = 0, todo = 0, byDay = {}, ordersByDay = {};
     G.forEach(function (g) {
       boxes += g.boxes || 0; if (!g.checked) todo++;
-      g.items.forEach(function (it) { var q = parseInt(it.qty, 10); if (q > 0) amount += q * 40000 + Math.ceil(q / 2) * 5000; });
       var k = dayKey(g.time); if (!k) return;
       byDay[k] = (byDay[k] || 0) + (g.boxes || 0); ordersByDay[k] = (ordersByDay[k] || 0) + 1;
     });
@@ -487,7 +487,7 @@
     for (var k = first, guard = 0; k <= today && guard < 40; k = dayAdd(k, 1), guard++) spDays.push({ k: k, v: byDay[k] || 0, n: ordersByDay[k] || 0 });
     var tile = function (cls, v, unit, label) { return '<div class="tile ' + cls + '"><div class="v">' + v + '<small>' + unit + '</small></div><div class="k">' + label + '</div></div>'; };
     var html = '<div class="tiles">' + tile('', G.length, '건', '총 주문') + tile('', boxes, '박스', '총 박스') +
-      tile('todo', todo, '건', '미확인') + tile('', amount ? Math.round(amount / 10000 * 10) / 10 : 0, '만원', '예상 금액') + '</div>';
+      tile('todo', todo, '건', '미확인') + tile('', G.length - todo, '건', '확인됨') + '</div>';
     var n = spDays.length, W = 300, H = 56, P = 6, max = 1;
     spDays.forEach(function (d) { if (d.v > max) max = d.v; });
     var X = function (i) { return n < 2 ? W / 2 : P + i * (W - 2 * P) / (n - 1); };
@@ -559,6 +559,10 @@
     return false;
   }
   function render() {
+    var isStat = state.tab === 'stat';
+    document.getElementById('q').style.display = isStat ? 'none' : '';
+    document.getElementById('list').style.display = isStat ? 'none' : '';
+    document.getElementById('statsWrap').style.display = isStat ? '' : 'none';
     var q = document.getElementById('q').value.trim();
     var all = state.groups;
     document.getElementById('n-todo').textContent = all.filter(function (g) { return !g.checked; }).length;
