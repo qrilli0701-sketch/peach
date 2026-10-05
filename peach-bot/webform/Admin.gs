@@ -8,7 +8,7 @@
  *        var ADMIN_PASSWORD_INIT = '...'; 를 만들어 함께 push 하면, 첫 로그인 때 속성으로 옮겨진다.
  *        레포가 공개라 비밀번호는 코드·레포에 넣지 않는다. 바꾸면 모든 폰이 다시 로그인해야 한다.
  */
-var ADMIN_COL_BY = 10;   // J: 확인자
+var ADMIN_COL_BY = 10;   // J: 주문받은사람(누구한테 들어온 주문인지, 확인할 때 고른다)
 var ADMIN_COL_AT = 11;   // K: 확인시각
 var ADMIN_DONE = { '확인': true, '완료': true };   // 확인된 것으로 보는 상태
 
@@ -19,11 +19,10 @@ function adminPage_() {
 }
 
 /** 비밀번호가 맞으면 토큰을 돌려준다. 폰에는 비밀번호 대신 이 토큰만 저장된다. */
-function adminLogin(password, name) {
+function adminLogin(password) {
   var cache = CacheService.getScriptCache();
   var fails = parseInt(cache.get('adminFails') || '0', 10);
   if (fails >= 10) throw new Error('비밀번호가 여러 번 틀려 10분 동안 잠겼어요. 잠시 후 다시 해주세요.');
-  if (!(name || '').trim()) throw new Error('이름을 적어주세요.');
   if (String(password || '') !== adminPassword_()) {
     cache.put('adminFails', String(fails + 1), 600);
     throw new Error('비밀번호가 맞지 않아요.');
@@ -146,7 +145,7 @@ function adminSheet_() {
 
 function adminEnsureCols_(sh) {
   var h = sh.getRange(1, ADMIN_COL_BY, 1, 2).getValues()[0];
-  if (!h[0] || !h[1]) sh.getRange(1, ADMIN_COL_BY, 1, 2).setValues([['확인자', '확인시각']]);
+  if (!h[0] || !h[1]) sh.getRange(1, ADMIN_COL_BY, 1, 2).setValues([['주문받은사람', '확인시각']]);
 }
 
 /** 한 줄을 알아보는 표식: 접수시각 + 받는사람 + 받는분전화 */

@@ -116,7 +116,7 @@
     .empty{text-align:center;color:var(--soft);padding:50px 0;font-size:.92rem}
 
     /* 상세 */
-    #detail{position:fixed;inset:0;z-index:20;background:var(--ground);overflow-y:auto;padding-bottom:150px}
+    #detail{position:fixed;inset:0;z-index:20;background:var(--ground);overflow-y:auto;padding-bottom:240px}
     #detail header{display:flex;align-items:center;gap:10px}
     #detail header h2{font-size:1.05rem;margin:0;flex:1}
     .sec{font-family:"Gowun Batang",serif;color:var(--accent);font-size:.95rem;margin:18px 0 8px}
@@ -135,7 +135,10 @@
     .actbar{position:fixed;left:0;right:0;bottom:0;z-index:21;background:var(--panel);border-top:1px solid var(--line);
       border-radius:22px 22px 0 0;box-shadow:0 -8px 28px rgba(120,50,30,.12);padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
     .actbar .inner{max-width:560px;margin:0 auto}
-    .actbar .primary{margin-top:0}
+    .actbar .primary{margin-top:10px}
+    .tk-label{font-size:.85rem;font-weight:700;color:var(--soft);margin:0 0 8px}
+    .actbar .who-pick{margin:0}
+    .actbar .chip{padding:11px 4px;font-size:.95rem}
     .okline{display:flex;align-items:center;gap:10px}
     .okline .txt{flex:1;color:var(--ok);font-weight:700;font-size:.95rem}
     .okline .txt small{display:block;color:var(--soft);font-weight:400;font-size:.78rem}
@@ -153,15 +156,6 @@
   <h1>🍑 임가네 주문 확인</h1>
   <p class="sub">가족만 들어올 수 있어요</p>
   <div class="box">
-    <label>누구세요? (확인한 사람으로 남아요)</label>
-    <div class="who-pick" id="whoPick">
-      <button type="button" class="chip" data-n="아빠">아빠</button>
-      <button type="button" class="chip" data-n="엄마">엄마</button>
-      <button type="button" class="chip" data-n="종원">종원</button>
-      <button type="button" class="chip" data-n="지은">지은</button>
-      <button type="button" class="chip" data-n="명석">명석</button>
-    </div>
-    <input id="nm" type="hidden">
     <label for="pw">가족 비밀번호</label>
     <input id="pw" type="password" autocomplete="current-password">
     <button class="primary" id="loginBtn" onclick="doLogin()">들어가기</button>
@@ -175,7 +169,6 @@
     <div class="wrap">
       <div class="top">
         <h1>🍑 주문 확인</h1>
-        <span class="who" id="who"></span>
         <button class="icon big" onclick="load()" aria-label="새로고침">↻</button>
         <button class="icon" onclick="logout()">나가기</button>
       </div>
@@ -221,8 +214,8 @@
 <div id="toast"></div>
 
 <script>
-  var K_TOKEN = 'peachAdminToken', K_NAME = 'peachAdminName', K_BOARD = 'peachAdminBoard';
-  var state = { token: '', name: '', groups: [], tab: 'todo', open: null, busy: false };
+  var K_TOKEN = 'peachAdminToken', K_BOARD = 'peachAdminBoard';
+  var state = { token: '', taker: '', groups: [], tab: 'todo', open: null, busy: false };
 
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function recall(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
@@ -406,30 +399,16 @@
   }
 
   /* ── 로그인 ── */
-  function pickWho(n) {
-    var ok = false;
-    document.querySelectorAll('#whoPick .chip').forEach(function (c) {
-      var on = c.getAttribute('data-n') === n; ok = ok || on; c.classList.toggle('on', on);
-    });
-    document.getElementById('nm').value = ok ? n : '';
-  }
-  document.getElementById('whoPick').addEventListener('click', function (e) {
-    var c = e.target.closest ? e.target.closest('.chip') : null;
-    if (c) pickWho(c.getAttribute('data-n'));
-  });
-
   function doLogin() {
-    var nm = document.getElementById('nm').value.trim();
     var pw = document.getElementById('pw').value;
     var err = document.getElementById('loginErr'), btn = document.getElementById('loginBtn');
     err.textContent = '';
-    if (!nm) { err.textContent = '위에서 누구인지 눌러주세요.'; return; }
     if (!pw) { err.textContent = '비밀번호를 적어주세요.'; return; }
     btn.disabled = true;
-    call('adminLogin', [pw, nm], function (res) {
+    call('adminLogin', [pw], function (res) {
       btn.disabled = false;
-      state.token = res.token; state.name = nm;
-      store(K_TOKEN, res.token); store(K_NAME, nm);
+      state.token = res.token;
+      store(K_TOKEN, res.token);
       document.getElementById('pw').value = '';
       enter();
     }, function (m) { btn.disabled = false; err.textContent = m; });
@@ -438,11 +417,9 @@
     state.token = ''; store(K_TOKEN, null);
     board.on = false; clearInterval(board.timer); clearInterval(board.clock);   // 알림판 설정은 남겨 두어 다시 로그인하면 알림판으로 돌아온다
     closeDetail();
-    pickWho(state.name || recall(K_NAME));
     show('login');
   }
   function enter() {
-    document.getElementById('who').textContent = state.name + '님';
     if (recall(K_BOARD) === '1') startBoard(); else show('main');
     load();
   }
@@ -524,7 +501,7 @@
   function openDetail(enc) {
     var g = findGroup(decodeURIComponent(enc));
     if (!g) return;
-    state.open = g.key;
+    state.open = g.key; state.taker = '';
     if (board.fresh[g.key]) { delete board.fresh[g.key]; boardRender(); }
     renderDetail(g);
     var d = document.getElementById('detail');
@@ -564,22 +541,33 @@
     var act = document.getElementById('dAct');
     if (g.checked) {
       act.innerHTML = '<div class="okline"><div class="txt">✓ 확인됨' +
-        '<small>' + esc(g.by || '') + (g.at ? ' · ' + esc(g.at) : '') + '</small></div>' +
+        '<small>' + (g.by ? esc(g.by) + '한테 온 주문' : '') + (g.at ? ' · ' + esc(g.at) : '') + '</small></div>' +
         (g.sheet1 ? '' : '<button class="ghost" onclick="unconfirm()">확인 취소</button>') + '</div>';
     } else {
-      act.innerHTML = '<button class="primary" id="okBtn" onclick="confirmOrder()">✓ 잘 들어왔어요, 확인</button>';
+      act.innerHTML = '<div class="tk-label">누구한테 들어온 주문이에요?</div>' +
+        '<div class="who-pick" id="takerPick">' + TAKERS.map(function (n) {
+          return '<button type="button" class="chip' + (state.taker === n ? ' on' : '') + '" onclick="pickTaker(\'' + n + '\')">' + n + '</button>';
+        }).join('') + '</div>' +
+        '<button class="primary" id="okBtn" onclick="confirmOrder()"' + (state.taker ? '' : ' disabled') + '>' +
+        (state.taker ? '✓ ' + state.taker + '한테 온 주문, 확인' : '위에서 먼저 눌러주세요') + '</button>';
     }
+  }
+  var TAKERS = ['아빠', '엄마', '종원', '지은', '명석'];
+  function pickTaker(n) {
+    state.taker = n;
+    var g = findGroup(state.open); if (g) renderDetail(g);
   }
   function pickItems(g) { return g.items.map(function (it) { return { row: it.row, sig: it.sig }; }); }
   function confirmOrder() {
     var g = findGroup(state.open); if (!g || state.busy) return;
+    if (!state.taker) { toast('누구한테 들어온 주문인지 먼저 눌러주세요'); return; }
     state.busy = true;
     var b = document.getElementById('okBtn'); if (b) { b.disabled = true; b.textContent = '저장 중…'; }
-    call('adminConfirm', [state.token, pickItems(g), state.name], function (res) {
+    call('adminConfirm', [state.token, pickItems(g), state.taker], function (res) {
       state.busy = false;
       toast(res.skipped ? '시트가 바뀐 줄이 있어 새로 불러왔어요' : '확인했어요');
       closeDetail(); load();
-    }, function (m) { state.busy = false; toast(m); if (b) { b.disabled = false; b.textContent = '✓ 잘 들어왔어요, 확인'; } });
+    }, function (m) { state.busy = false; toast(m); if (b) { b.disabled = false; b.textContent = '✓ ' + state.taker + '한테 온 주문, 확인'; } });
   }
   function unconfirm() {
     var g = findGroup(state.open); if (!g || state.busy) return;
@@ -593,9 +581,8 @@
   /* ── 시작 ── */
   document.getElementById('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden && state.token) load(); });
-  state.token = recall(K_TOKEN); state.name = recall(K_NAME);
-  if (state.token && state.name) enter();
-  else { pickWho(state.name); show('login'); }
+  state.token = recall(K_TOKEN);
+  if (state.token) enter(); else show('login');
 </script>
 </body>
 </html>
