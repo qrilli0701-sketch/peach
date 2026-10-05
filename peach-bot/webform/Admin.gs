@@ -37,7 +37,7 @@ function adminList(token) {
   adminCheck_(token);
   var sh = adminSheet_();
   var last = sh.getLastRow();
-  if (last < 2) return { groups: [] };
+  if (last < 2) return { groups: [], inbox: adminInbox_() };
   var width = Math.max(sh.getLastColumn(), ADMIN_COL_LOG);
   var v = sh.getRange(2, 1, last - 1, width).getDisplayValues();
 
@@ -85,7 +85,7 @@ function adminList(token) {
     return g;
   });
   groups.sort(function (a, b) { return b.lastRow - a.lastRow; });
-  return { groups: groups };
+  return { groups: groups, inbox: adminInbox_() };
 }
 
 /** '주문접수' 탭 전체(헤더 포함)를 화면에 보이는 그대로의 글자로 돌려준다 — 엑셀 내려받기용. 다른 탭은 건드리지 않는다. */
@@ -263,6 +263,34 @@ function adminEdit(token, edits, who) {
       updated++;
     });
     return { updated: updated, skipped: skipped };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** '미분류' 탭에서 상태가 '대기'인 메일 목록 (본문은 화면으로 보내지 않는다) */
+function adminInbox_() {
+  var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(INBOX_SHEET);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var v = sh.getRange(2, 1, sh.getLastRow() - 1, INBOX_HEADERS.length).getDisplayValues();
+  var out = [];
+  v.forEach(function (r, i) {
+    if (r[7] === '대기') out.push({ row: i + 2, from: r[1], subject: r[2], date: r[3], files: r[5], link: r[6] });
+  });
+  return out;
+}
+
+/** 못 읽은 메일을 '처리됨'으로 표시 (본문은 사람이 확인해 주문접수에 넣은 뒤) */
+function adminInboxDone(token, row, from) {
+  adminCheck_(token);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(INBOX_SHEET);
+    if (!sh || row < 2 || row > sh.getLastRow()) throw new Error('메일을 찾을 수 없어요. 새로고침해 주세요.');
+    if (String(sh.getRange(row, 2).getDisplayValue()) !== String(from)) throw new Error('목록이 바뀌었어요. 새로고침해 주세요.');
+    sh.getRange(row, 8).setValue('처리됨');
+    return { ok: true };
   } finally {
     lock.releaseLock();
   }

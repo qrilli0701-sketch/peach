@@ -138,6 +138,15 @@
     .actbar .primary{margin-top:10px}
     /* 현황 카드 */
     .stats{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px 16px 12px;margin-top:12px;box-shadow:var(--shadow)}
+    .inbox{background:var(--accent-soft);border:1px solid var(--accent);border-radius:16px;padding:12px 14px}
+    .ib-hd{font-weight:800;color:var(--accent-dk);font-size:.95rem}
+    .ib-hd span{display:block;font-weight:500;font-size:.75rem;color:var(--soft);margin-top:2px}
+    .ib-row{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+    .ib-row:first-of-type{margin-top:8px}
+    .ib-t{flex:1;min-width:0;font-size:.85rem}
+    .ib-t b,.ib-t span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ib-t span{font-size:.72rem;color:var(--soft)}
+    .ib-row a,.ib-row button{font-family:inherit;font-size:.8rem;font-weight:700;border:1px solid var(--accent);background:var(--panel);color:var(--accent-dk);border-radius:10px;padding:6px 10px;text-decoration:none;cursor:pointer}
     .tiles{display:grid;grid-template-columns:3fr 2fr;gap:0}
     .tiles .grp{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
     .tiles .grp.r{grid-template-columns:repeat(2,1fr);border-left:1px solid var(--line, #ecd9cc);padding-left:6px}
@@ -224,6 +233,7 @@
       <input id="q" type="search" placeholder="이름, 주소, 전화번호, 비고 아무거나 찾기" oninput="render()">
     </div>
   </header>
+  <div class="wrap" id="inbox"></div>
   <div class="wrap"><div class="stats" id="stats"></div></div>
   <div class="wrap btnrow"><button class="dl" id="dlBtn" onclick="downloadAll()">📥 (받기) 전체리스트</button><button class="dl" onclick="startBoard()">📺 알림판</button></div>
   <div class="wrap" id="list"><p class="empty">불러오는 중…</p></div>
@@ -529,6 +539,8 @@
   function load() {
     call('adminList', [state.token], function (res) {
       state.groups = res.groups || [];
+      state.inbox = res.inbox || [];
+      renderInbox();
       render();
       renderStats();
       boardUpdate();
@@ -539,6 +551,21 @@
     }, function (m) {
       document.getElementById('list').innerHTML = '<p class="empty">' + esc(m) + '</p>';
     });
+  }
+  function renderInbox() {
+    var box = document.getElementById('inbox'), L = state.inbox || [];
+    if (!L.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="inbox"><div class="ib-hd">📧 못 읽은 메일 ' + L.length + '통 <span>(우리 양식이 아니에요. Claude에게 "미분류 읽어줘"라고 하세요)</span></div>' +
+      L.map(function (m, i) {
+        return '<div class="ib-row"><div class="ib-t"><b>' + esc(m.subject || '(제목 없음)') + '</b><span>' + esc(m.from) + ' · ' + esc(m.date) +
+          (m.files ? ' · 📎 ' + esc(m.files) : '') + '</span></div>' +
+          '<a href="' + esc(m.link) + '" target="_blank" rel="noopener">지메일</a>' +
+          '<button onclick="inboxDone(' + i + ')">처리됨</button></div>';
+      }).join('') + '</div>';
+  }
+  function inboxDone(i) {
+    var m = (state.inbox || [])[i]; if (!m) return;
+    call('adminInboxDone', [state.token, m.row, m.from], function () { load(); }, function (e) { alert(e); load(); });
   }
   function setTab(t) {
     state.tab = t;

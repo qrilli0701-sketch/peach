@@ -1,6 +1,7 @@
 /**
  * 메일로 받은 '대량주문 엑셀'을 자동으로 읽어 '주문접수' 탭에 적재한다.
- * - qrilli0701@gmail.com 로 온, xlsx 첨부가 있는 메일을 주기적으로 확인
+ * - '임가네접수' 라벨이 붙은 메일만 읽는다 (지메일 필터: 받는 주소 qrilli0701+peach@gmail.com → 라벨 임가네접수)
+ *   라벨이 없는 메일(개인·업무 메일)은 열지도, 복사하지도 않는다
  * - 우리 양식(보내는분 = 6행, 받는분 표 = 10행부터)만 인식, 아니면 건너뜀
  * - 처리한 메일에는 라벨을 붙여 중복 처리 방지
  *
@@ -9,7 +10,11 @@
  *  2) setupTrigger() 를 한 번 실행 → 5분마다 자동 확인되는 트리거 생성 (권한 승인)
  */
 var LABEL_DONE = '임가네처리완료';
-var GMAIL_QUERY = 'has:attachment filename:xlsx -label:' + LABEL_DONE + ' newer_than:30d';
+var LABEL_IN = '임가네접수';       // 지메일 필터가 붙여주는 라벨 (이 라벨 메일만 읽음)
+var LABEL_UNK = '임가네미분류';   // 읽지 못한 메일에 붙여 재검사 방지
+var INBOX_SHEET = '미분류';
+var INBOX_HEADERS = ['받은시각', '보낸사람', '제목', '메일날짜', '본문', '첨부', '지메일링크', '상태'];
+var GMAIL_QUERY = 'label:' + LABEL_IN + ' -label:' + LABEL_DONE + ' -label:' + LABEL_UNK + ' newer_than:30d';
 
 function setupTrigger() {
   // 중복 생성 방지: 기존 processOrderEmails 트리거 제거 후 재생성
@@ -22,6 +27,7 @@ function setupTrigger() {
 
 function processOrderEmails() {
   var label = GmailApp.getUserLabelByName(LABEL_DONE) || GmailApp.createLabel(LABEL_DONE);
+  var labelUnk = GmailApp.getUserLabelByName(LABEL_UNK) || GmailApp.createLabel(LABEL_UNK);
   var threads = GmailApp.search(GMAIL_QUERY, 0, 20);
 
   threads.forEach(function (thread) {
@@ -41,8 +47,24 @@ function processOrderEmails() {
         }
       });
     });
-    if (handledAny) thread.addLabel(label);
+    if (handledAny) { thread.addLabel(label); return; }
+    try { recordUnknown_(thread); thread.addLabel(labelUnk); } catch (e) { Logger.log('미분류 기록 실패: ' + e); }
   });
+}
+
+/** 우리 양식으로 읽지 못한 메일(사진·PDF·본문 주문·다른 양식)을 '미분류' 탭에 쌓는다. 라벨이 붙은 메일만 여기 온다. */
+function recordUnknown_(thread) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sh = ss.getSheetByName(INBOX_SHEET);
+  if (!sh) { sh = ss.insertSheet(INBOX_SHEET); sh.appendRow(INBOX_HEADERS); }
+  if (sh.getLastRow() === 0) sh.appendRow(INBOX_HEADERS);
+  var msgs = thread.getMessages(), m = msgs[msgs.length - 1];
+  var now = Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss');
+  var files = m.getAttachments().map(function (a) { return a.getName(); }).join(', ');
+  var body = String(m.getPlainBody() || '').substring(0, 3000);
+  sh.appendRow([now, m.getFrom(), m.getSubject(),
+                Utilities.formatDate(m.getDate(), 'Asia/Seoul', 'yyyy-MM-dd HH:mm'),
+                body, files, 'https://mail.google.com/mail/u/0/#all/' + thread.getId(), '대기']);
 }
 
 /** 첨부 xlsx 를 Google 시트로 변환하고 파일 id 반환 (Drive 고급서비스 v2/v3 모두 지원) */
